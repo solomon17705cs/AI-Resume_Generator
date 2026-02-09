@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     `;
 
         const response = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
-            model: 'anthropic/claude-3.5-sonnet',
+            model: 'meta-llama/llama-3.3-70b-instruct:free',
             messages: [{ role: 'user', content: prompt }],
         }, {
             headers: {

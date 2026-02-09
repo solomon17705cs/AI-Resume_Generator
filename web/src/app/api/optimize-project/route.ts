@@ -21,7 +21,7 @@ export async function POST(req: Request) {
         `;
 
         const completion = await openai.chat.completions.create({
-            model: 'google/gemini-2.0-flash-001',
+            model: 'meta-llama/llama-3.3-70b-instruct:free',
             messages: [{ role: 'user', content: prompt }],
             response_format: { type: 'json_object' }
         });

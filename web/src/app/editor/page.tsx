@@ -21,7 +21,11 @@ import {
     ChevronRight,
     ShieldCheck,
     Wand2,
-    ArrowLeft
+    ArrowLeft,
+    Maximize2,
+    Minimize2,
+    X,
+    GripVertical
 } from "lucide-react";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
@@ -45,6 +49,9 @@ export default function EditorPage() {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [isOptimizing, setIsOptimizing] = useState(false);
     const [previewScale, setPreviewScale] = useState(0.5);
+    const [previewWidth, setPreviewWidth] = useState(600);
+    const [isFullScreen, setIsFullScreen] = useState(false);
+    const [isResizing, setIsResizing] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [isHydrated, setIsHydrated] = useState(false);
 
@@ -59,6 +66,31 @@ export default function EditorPage() {
             router.push("/login");
         }
     }, [isHydrated, githubLinked, router]);
+
+    // Resizing Logic
+    useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+            if (!isResizing) return;
+            const newWidth = window.innerWidth - e.clientX;
+            setPreviewWidth(Math.max(400, Math.min(newWidth, 1200))); // Min 400px, Max 1200px
+        };
+
+        const handleMouseUp = () => {
+            setIsResizing(false);
+            document.body.style.cursor = 'default';
+        };
+
+        if (isResizing) {
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+            document.body.style.cursor = 'col-resize';
+        }
+
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isResizing]);
 
     if (!isHydrated) return null;
 
@@ -438,33 +470,113 @@ export default function EditorPage() {
                     </div>
                 </main>
 
+                {/* Resizer Handle */}
+                <div
+                    className="w-1 hover:w-2 hover:bg-blue-600/50 bg-white/5 cursor-col-resize transition-all z-30 flex items-center justify-center group"
+                    onMouseDown={() => setIsResizing(true)}
+                >
+                    <div className="h-8 w-1 bg-slate-600 rounded-full group-hover:bg-white transition-colors" />
+                </div>
+
                 {/* Live HD Preview Sidebar */}
-                <aside className="w-[500px] border-l border-white/5 bg-[#020617] flex flex-col relative z-20 group overflow-hidden">
+                <aside
+                    className="shrink-0 bg-[#020617] border-l border-white/5 flex flex-col relative transition-all duration-75"
+                    style={{ width: `${previewWidth}px` }}
+                >
                     <div className="h-16 border-b border-white/5 flex items-center justify-between px-6 bg-slate-950/80 shrink-0">
                         <div className="flex items-center gap-2">
                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">HD Render Preview</span>
                             <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_#10b981]" />
                         </div>
-                        <div className="flex items-center gap-2 bg-white/5 rounded-xl px-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => setPreviewScale(Math.max(0.3, previewScale - 0.05))} className="w-8 h-8 text-slate-500 hover:text-white">-</button>
-                            <span className="text-[10px] font-mono text-slate-500">{Math.round(previewScale * 100)}%</span>
-                            <button onClick={() => setPreviewScale(Math.min(1.0, previewScale + 0.05))} className="w-8 h-8 text-slate-500 hover:text-white">+</button>
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2 bg-white/5 rounded-xl px-2">
+                                <button onClick={() => setPreviewScale(Math.max(0.3, previewScale - 0.1))} className="w-8 h-8 text-slate-500 hover:text-white flex items-center justify-center">-</button>
+                                <span className="text-[10px] font-mono text-slate-500 w-8 text-center">{Math.round(previewScale * 100)}%</span>
+                                <button onClick={() => setPreviewScale(Math.min(1.5, previewScale + 0.1))} className="w-8 h-8 text-slate-500 hover:text-white flex items-center justify-center">+</button>
+                            </div>
+                            <button
+                                onClick={() => setIsFullScreen(true)}
+                                className="p-2 text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+                                title="Enter Full Screen"
+                            >
+                                <Maximize2 size={18} />
+                            </button>
                         </div>
                     </div>
                     <div className="flex-1 overflow-auto p-12 bg-[#020617] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] flex justify-center custom-scrollbar">
                         <div
-                            className="drop-shadow-[0_40px_80px_rgba(0,0,0,0.9)] h-fit mb-40 rounded-lg overflow-hidden border border-white/5"
+                            className="drop-shadow-[0_40px_80px_rgba(0,0,0,0.9)] h-fit mb-40 rounded-lg overflow-hidden border border-white/5 bg-white transition-all duration-200"
                             style={{
-                                width: `${210 * previewScale}mm`,
-                                height: `${297 * previewScale}mm`,
-                                minWidth: `${210 * previewScale}mm`
+                                width: '210mm',
+                                minWidth: '210mm',
+                                height: '297mm',
+                                minHeight: '297mm',
+                                transform: `scale(${previewScale})`,
+                                transformOrigin: 'top center'
                             }}
                         >
-                            <Preview data={resume as any} scale={previewScale} />
+                            <Preview data={resume as any} scale={1} />
                         </div>
                     </div>
                 </aside>
             </div>
+
+            {/* Full-Screen Overlay Modal */}
+            <AnimatePresence>
+                {isFullScreen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex items-center justify-center"
+                        onClick={() => setIsFullScreen(false)}
+                    >
+                        {/* Control Bar */}
+                        <div className="absolute top-0 left-0 right-0 h-16 bg-slate-950/80 border-b border-white/5 flex items-center justify-between px-8 z-10">
+                            <div className="flex items-center gap-3">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Immersive Preview</span>
+                                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_#10b981]" />
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2 bg-white/5 rounded-xl px-2">
+                                    <button onClick={(e) => { e.stopPropagation(); setPreviewScale(Math.max(0.3, previewScale - 0.1)); }} className="w-8 h-8 text-slate-500 hover:text-white flex items-center justify-center">-</button>
+                                    <span className="text-[10px] font-mono text-slate-400 w-8 text-center">{Math.round(previewScale * 100)}%</span>
+                                    <button onClick={(e) => { e.stopPropagation(); setPreviewScale(Math.min(1.5, previewScale + 0.1)); }} className="w-8 h-8 text-slate-500 hover:text-white flex items-center justify-center">+</button>
+                                </div>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setIsFullScreen(false); }}
+                                    className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all flex items-center gap-2"
+                                >
+                                    <X size={18} />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Exit</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Preview Content */}
+                        <div
+                            className="overflow-auto max-h-[calc(100vh-80px)] mt-16 p-12 custom-scrollbar"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <motion.div
+                                initial={{ scale: 0.95, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0.95, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="drop-shadow-[0_40px_120px_rgba(0,0,0,0.9)] rounded-lg overflow-hidden border border-white/10 bg-white"
+                                style={{
+                                    width: '210mm',
+                                    height: '297mm',
+                                    transform: `scale(${previewScale})`,
+                                    transformOrigin: 'center center'
+                                }}
+                            >
+                                <Preview data={resume as any} scale={1} />
+                            </motion.div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             <style jsx global>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }

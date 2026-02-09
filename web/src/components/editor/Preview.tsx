@@ -30,7 +30,7 @@ export const Preview: React.FC<PreviewProps> = ({ data, scale = 1 }) => {
                         {personalInfo.fullName || 'YOUR NAME'}
                     </h1>
                     <div className="text-[10pt] flex flex-wrap justify-center gap-x-6 gap-y-1 text-slate-600 font-bold uppercase tracking-widest">
-                        {personalInfo.email && <span>{personalInfo.email}</span>}
+                        {personalInfo.email && <span className="lowercase">{personalInfo.email}</span>}
                         {personalInfo.phone && <span>{personalInfo.phone}</span>}
                         {personalInfo.location && <span>{personalInfo.location}</span>}
                     </div>
