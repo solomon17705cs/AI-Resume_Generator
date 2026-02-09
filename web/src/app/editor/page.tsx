@@ -403,6 +403,10 @@ export default function EditorPage() {
                                                                 newBullets[bIdx] = v;
                                                                 updateExperience(exp.id, { bullets: newBullets });
                                                             }}
+                                                            onRemove={() => {
+                                                                const newBullets = exp.bullets.filter((_, i) => i !== bIdx);
+                                                                updateExperience(exp.id, { bullets: newBullets });
+                                                            }}
                                                             jobDescription={jobDescription}
                                                         />
                                                     ))}
@@ -445,6 +449,11 @@ export default function EditorPage() {
                                                             onChange={(v) => {
                                                                 const newBullets = [...proj.bullets];
                                                                 newBullets[bIdx] = v;
+                                                                const updated = resume.projects.map(p => p.id === proj.id ? { ...p, bullets: newBullets } : p);
+                                                                updateResume({ projects: updated });
+                                                            }}
+                                                            onRemove={() => {
+                                                                const newBullets = proj.bullets.filter((_, i) => i !== bIdx);
                                                                 const updated = resume.projects.map(p => p.id === proj.id ? { ...p, bullets: newBullets } : p);
                                                                 updateResume({ projects: updated });
                                                             }}
