@@ -27,21 +27,64 @@ ATSense is a high-performance career engineering platform. Unlike simple builder
 
 ---
 
-## � Deployment & Launch
+## 🚀 Installation & Setup
 
-### 1. The Brain (NLP API)
+Follow these steps to get the full ATSense environment running on your local machine.
+
+### 1. Intelligence Engine (Python Backend)
+The backend handles semantic analysis, keyword extraction, and vector matching.
+
 ```bash
+# Navigate to api directory
 cd api
-source venv/bin/activate
+
+# Create a virtual environment
+python -m venv venv
+
+# Activate the environment
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install core dependencies
+pip install fastapi uvicorn spacy keybert sentence-transformers pydantic "urllib3<2"
+
+# Download the required NLP model
+python -m spacy download en_core_web_sm
+
+# Launch the engine (on port 8001)
 python main.py
 ```
 
-### 2. The Core (Next.js Application)
+### 2. Web Flagship (Next.js Frontend)
+The frontend manages the state, real-time preview, and AI-powered editing.
+
 ```bash
+# Navigate to web directory
 cd web
+
+# Install npm packages
 npm install
+
+# Configure Environment Variables
+# Create a .env.local file and add your keys:
+# OPENROUTER_API_KEY=your_key_here
+# PYTHON_API_URL=http://localhost:8001
+
+# Start the development server
 npm run dev
 ```
+
+### 3. Usage & Access
+*   **Web Portal**: [http://localhost:3000](http://localhost:3000)
+*   **Editor**: [http://localhost:3000/editor](http://localhost:3000/editor)
+*   **API Health**: [http://localhost:8001](http://localhost:8001)
+
+---
+
+## 🚦 Phase 2: Operations
+1. Paste a Job Description in the **Sync Terminal**.
+2. Click **"Launch Analysis"** to see your Match Forensics.
+3. Use the **Sparkles (AI)** button on any bullet point to rewrite it using the XYZ Formula.
+4. Export the resulting **Engineered PDF** for application.
 
 ---
 Built by Solomon @ Y Hackathon 2026.
