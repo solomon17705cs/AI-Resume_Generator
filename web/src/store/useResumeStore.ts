@@ -6,10 +6,13 @@ interface ResumeState {
     resume: ResumeData;
     analysis: ATSAnalysis | null;
     history: ResumeData[];
+    jobDescription: string;
+    jobUrl: string;
 
     // Actions
     updateResume: (updates: Partial<ResumeData>) => void;
     setAnalysis: (analysis: ATSAnalysis) => void;
+    setJobContext: (description: string, url: string) => void;
     saveToHistory: () => void;
     restoreFromHistory: (id: string) => void;
 
@@ -91,12 +94,19 @@ export const useResumeStore = create<ResumeState>()(
             githubUsername: '',
             githubAvatar: '',
             githubRepos: [],
+            jobDescription: '',
+            jobUrl: '',
 
             updateResume: (updates) => set((state) => ({
                 resume: { ...state.resume, ...updates, lastModified: new Date().toISOString() }
             })),
 
             setAnalysis: (analysis) => set({ analysis }),
+
+            setJobContext: (description, url) => set({
+                jobDescription: description,
+                jobUrl: url
+            }),
 
             saveToHistory: () => set((state) => ({
                 history: [state.resume, ...state.history].slice(0, 10)
@@ -160,54 +170,58 @@ export const useResumeStore = create<ResumeState>()(
             }),
 
             syncLanguagesFromGitHub: () => set((state) => {
-                // Extract all unique languages from all repos
-                const languageMap = new Map<string, number>();
+                const { processGithubLanguages } = require('@/utils/skillProcessor');
 
+                // Collect all languages from all repos
+                const allLanguages: { name: string; percentage: number; color?: string }[] = [];
                 state.githubRepos.forEach((repo) => {
                     if (repo.languages && Array.isArray(repo.languages)) {
-                        repo.languages.forEach((lang: { name: string; percentage: number }) => {
-                            const currentCount = languageMap.get(lang.name) || 0;
-                            languageMap.set(lang.name, currentCount + 1);
+                        repo.languages.forEach((lang: any) => {
+                            allLanguages.push({
+                                name: lang.name,
+                                percentage: lang.percentage || 1, // Default to 1 if no percentage
+                                color: lang.color
+                            });
                         });
                     }
                 });
 
-                // Sort languages by frequency (most used first)
-                const sortedLanguages = Array.from(languageMap.entries())
-                    .sort((a, b) => b[1] - a[1])
-                    .map(([name]) => name);
+                if (allLanguages.length === 0) return state;
 
-                console.log('🔧 Extracted languages from GitHub:', sortedLanguages);
+                // Process into categories
+                const categories = processGithubLanguages(allLanguages);
 
-                // Find or create the "Languages" skill category
-                const existingSkills = state.resume.skills;
-                const languagesCategoryIndex = existingSkills.findIndex(
-                    cat => cat.name.toLowerCase() === 'languages'
-                );
+                // Convert to ResumeData skills format
+                const existingSkills = [...state.resume.skills];
 
-                let updatedSkills;
-                if (languagesCategoryIndex >= 0) {
-                    // Merge with existing languages, avoiding duplicates
-                    const existingLangs = existingSkills[languagesCategoryIndex].skills;
-                    const mergedLangs = Array.from(new Set([...sortedLanguages, ...existingLangs]));
-
-                    updatedSkills = existingSkills.map((cat, idx) =>
-                        idx === languagesCategoryIndex
-                            ? { ...cat, skills: mergedLangs }
-                            : cat
+                Object.values(categories).forEach((cat: any) => {
+                    const existingCatIndex = existingSkills.findIndex(
+                        s => s.name.toLowerCase() === cat.name.toLowerCase()
                     );
-                } else {
-                    // Create new "Languages" category
-                    updatedSkills = [
-                        { id: `skill-${Date.now()}`, name: 'Languages', skills: sortedLanguages },
-                        ...existingSkills
-                    ];
-                }
+
+                    const newSkills = cat.skills.map((s: any) => s.name);
+
+                    if (existingCatIndex >= 0) {
+                        // Merge skills in existing category
+                        const mergedSkills = Array.from(new Set([...existingSkills[existingCatIndex].skills, ...newSkills]));
+                        existingSkills[existingCatIndex] = {
+                            ...existingSkills[existingCatIndex],
+                            skills: mergedSkills
+                        };
+                    } else {
+                        // Add new category
+                        existingSkills.push({
+                            id: `skill-${Math.random().toString(36).substr(2, 9)}`,
+                            name: cat.name,
+                            skills: newSkills
+                        });
+                    }
+                });
 
                 return {
                     resume: {
                         ...state.resume,
-                        skills: updatedSkills,
+                        skills: existingSkills,
                         lastModified: new Date().toISOString()
                     }
                 };

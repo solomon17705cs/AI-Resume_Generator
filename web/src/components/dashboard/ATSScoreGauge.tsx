@@ -8,9 +8,10 @@ interface ATSScoreGaugeProps {
 }
 
 export const ATSScoreGauge: React.FC<ATSScoreGaugeProps> = ({ score }) => {
+    const clampedScore = Math.min(score, 100);
     const radius = 70;
     const circumference = 2 * Math.PI * radius;
-    const offset = circumference - (score / 100) * circumference;
+    const offset = circumference - (clampedScore / 100) * circumference;
 
     const getColor = (s: number) => {
         if (s >= 80) return "text-green-500";
@@ -19,10 +20,14 @@ export const ATSScoreGauge: React.FC<ATSScoreGaugeProps> = ({ score }) => {
     };
 
     return (
-        <div className="relative flex items-center justify-center p-4">
-            <svg className="w-48 h-48 -rotate-90">
+        <div className="relative flex items-center justify-center">
+            <svg
+                className="w-48 h-48 -rotate-90 overflow-visible"
+                viewBox="0 0 192 192"
+            >
+                {/* Track Circle */}
                 <circle
-                    className="text-slate-800"
+                    className="text-white/10"
                     strokeWidth="8"
                     stroke="currentColor"
                     fill="transparent"
@@ -30,8 +35,9 @@ export const ATSScoreGauge: React.FC<ATSScoreGaugeProps> = ({ score }) => {
                     cx="96"
                     cy="96"
                 />
+                {/* Progress Arc */}
                 <motion.circle
-                    className={getColor(score)}
+                    className={getColor(clampedScore)}
                     strokeWidth="8"
                     strokeDasharray={circumference}
                     initial={{ strokeDashoffset: circumference }}
@@ -45,13 +51,13 @@ export const ATSScoreGauge: React.FC<ATSScoreGaugeProps> = ({ score }) => {
                     cy="96"
                 />
             </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                 <motion.span
                     initial={{ opacity: 0, scale: 0.5 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className={`text-5xl font-black font-display ${getColor(score)}`}
+                    className={`text-5xl font-black font-display tracking-tight ${getColor(clampedScore)}`}
                 >
-                    {score}
+                    {clampedScore}
                 </motion.span>
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">Match Potential</span>
             </div>

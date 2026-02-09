@@ -65,13 +65,14 @@ async def analyze(request: AnalysisRequest):
     # Deep dive: more complex in production, but here we simulate based on "rules" matching
     structural_score = 0.85 
     
-    # Calculate weighted score
-    final_score = (
+    # Calculate weighted score (Capped at 100)
+    raw_score = (
         (kw_score * weights["keywords"]) + 
         (semantic_sim * weights["semantic"]) +
         (structural_score * weights["structure"]) +
-        (0.90 * weights["formatting"]) # Simulated formatting score
+        (0.90 * weights["formatting"])
     ) * 100
+    final_score = min(raw_score, 100.0)
     
     # 4. Professional Reasoning Engine (ATS Contextualized)
     ats_name = profile.get("name", "Generic ATS")
@@ -94,15 +95,15 @@ async def analyze(request: AnalysisRequest):
         suggestions.append("PRO TIP: Semantic overlap is high. Excellent for modern systems like Greenhouse/Lever.")
 
     return AnalysisResponse(
-        score=round(final_score, 2),
+        score=round(float(final_score), 2),
         found_keywords=found,
         missing_keywords=missing,
         reasoning=reasoning,
         suggestions=suggestions,
         match_forensics={
-            "semantic_overlap": round(semantic_sim * 100, 2),
-            "keyword_density": round(kw_score * 100, 2),
-            "structural_integrity": round(structural_score * 100, 2)
+            "semantic_overlap": round(min(semantic_sim * 100, 100.0), 2),
+            "keyword_density": round(min(kw_score * 100, 100.0), 2),
+            "structural_integrity": round(min(structural_score * 100, 100.0), 2)
         }
     )
 

@@ -24,6 +24,7 @@ import Link from "next/link";
 import { useResumeStore } from "@/store/useResumeStore";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import { LogoutButton } from "@/components/layout/LogoutButton";
 
 export default function DashboardPage() {
     const router = useRouter();
@@ -132,40 +133,30 @@ export default function DashboardPage() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-950 text-slate-100 flex font-sans overflow-hidden">
+        <div className="h-screen bg-slate-950 text-slate-100 flex font-sans overflow-hidden">
             {/* SaaS Sidebar */}
-            <aside className="w-64 border-r border-white/5 flex flex-col p-6 glass-dark shrink-0">
-                <div className="flex items-center gap-2 mb-12">
-                    <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-                        <Zap className="text-white fill-white" size={16} />
+            <aside className="w-64 border-r border-white/5 flex flex-col glass-dark shrink-0 h-full">
+                <div className="p-6 flex flex-col h-full">
+                    <div className="flex items-center gap-2 mb-12">
+                        <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                            <Zap className="text-white fill-white" size={16} />
+                        </div>
+                        <span className="text-xl font-black font-display tracking-tighter">ATSense</span>
                     </div>
-                    <span className="text-xl font-black font-display tracking-tighter">ATSense</span>
-                </div>
 
-                <nav className="flex-1 space-y-2">
-                    <SidebarItem href="/dashboard" icon={<LayoutDashboard size={18} />} label="Overview" active />
-                    <SidebarItem href="/resumes" icon={<FileText size={18} />} label="My Resumes" />
-                    <SidebarItem href="/analysis" icon={<Target size={18} />} label="Job Analyzer" />
-                    <SidebarItem href="#" icon={<Briefcase size={18} />} label="Applications" />
-                </nav>
+                    <nav className="flex-1 space-y-2">
+                        <SidebarItem href="/dashboard" icon={<LayoutDashboard size={18} />} label="Overview" active />
+                        <SidebarItem href="/resumes" icon={<FileText size={18} />} label="My Resumes" />
+                        <SidebarItem href="/analysis" icon={<Target size={18} />} label="Job Analyzer" />
+                        <SidebarItem href="#" icon={<Briefcase size={18} />} label="Applications" />
+                        <div className="h-px bg-white/5 my-4" />
+                        <SidebarItem href="#" icon={<Settings size={18} />} label="Settings" />
+                        <SidebarItem href="/profile" icon={<User size={18} />} label="Profile" />
+                    </nav>
 
-                <div className="pt-6 border-t border-white/5 space-y-2">
-                    <SidebarItem href="#" icon={<Settings size={18} />} label="Settings" />
-                    <SidebarItem href="/profile" icon={<User size={18} />} label="Profile" />
-                </div>
-
-                <div className="mt-auto pt-6 border-t border-white/5">
-                    <button
-                        onClick={() => {
-                            document.cookie = "github_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-                            setGitHubStatus({ linked: false, username: '', avatar: '' });
-                            router.push('/login');
-                        }}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-red-500 hover:bg-red-500/10 transition-all"
-                    >
-                        <RefreshCcw size={18} />
-                        Log Out
-                    </button>
+                    <div className="mt-auto pt-6 border-t border-white/5">
+                        <LogoutButton />
+                    </div>
                 </div>
             </aside>
 

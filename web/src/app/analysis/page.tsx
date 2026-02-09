@@ -16,19 +16,29 @@ import {
     TrendingUp,
     ShieldCheck,
     Cpu,
-    BarChart4,
-    ArrowRight
+    Brain,
+    Wand2,
+    Sparkles,
+    ArrowRight,
+    BarChart4
 } from "lucide-react";
 import Link from "next/link";
 import { useResumeStore } from "@/store/useResumeStore";
 import { useRouter } from "next/navigation";
+import axios from "axios";
 import { ATSScoreGauge } from "@/components/dashboard/ATSScoreGauge";
+import { ReasoningPanel } from "@/components/dashboard/ReasoningPanel";
+import { LogoutButton } from "@/components/layout/LogoutButton";
+import { SkillIntelligence } from "@/components/dashboard/SkillIntelligence";
 
 export default function AnalysisPage() {
     const router = useRouter();
     const {
-        githubLinked, analysis, resume
+        githubLinked, analysis, resume, jobDescription, jobUrl,
+        updateResume, setAnalysis
     } = useResumeStore();
+
+    const [isFixing, setIsFixing] = useState(false);
 
     const [isHydrated, setIsHydrated] = useState(false);
 
@@ -43,28 +53,88 @@ export default function AnalysisPage() {
         }
     }, [isHydrated, githubLinked, router]);
 
+    const handleFixAll = async () => {
+        if (!jobDescription || !analysis) return;
+
+        const beforeScore = analysis.overallScore;
+        setIsFixing(true);
+        try {
+            // 1. Optimize
+            const optRes = await axios.post('/api/optimize-full', {
+                resume,
+                jobDescription,
+                jobUrl
+            });
+
+            if (optRes.data.success) {
+                const optimizedResume = optRes.data.optimizedResume;
+                updateResume(optimizedResume);
+
+                // 2. Re-Analyze
+                const analysisRes = await axios.post('/api/analyze', {
+                    resume_text: JSON.stringify(optimizedResume),
+                    job_description: jobDescription,
+                    jd_url: jobUrl
+                });
+
+                if (analysisRes.data) {
+                    const afterScore = analysisRes.data.score;
+                    setAnalysis({
+                        overallScore: afterScore,
+                        atsType: analysisRes.data.ats_type,
+                        atsProfile: analysisRes.data.ats_profile,
+                        sectionScores: { experience: 85, skills: 80, impact: 95 },
+                        keywords: {
+                            found: analysisRes.data.found_keywords,
+                            missing: analysisRes.data.missing_keywords
+                        },
+                        reasoning: analysisRes.data.reasoning,
+                        suggestions: analysisRes.data.suggestions.map((s: any, i: number) => ({
+                            id: i.toString(),
+                            type: s.type || 'info',
+                            message: typeof s === 'string' ? s : s.message
+                        })),
+                        forensics: analysisRes.data.match_forensics
+                    });
+
+                    const improvement = (afterScore - beforeScore).toFixed(1);
+                    alert(`🚀 Success! Score improved from ${beforeScore}% to ${afterScore}% (+${improvement}%). \nYour resume has been strategically optimized.`);
+                }
+            }
+        } catch (error) {
+            console.error("Fix All failed", error);
+            alert("Optimization engine encountered an error.");
+        } finally {
+            setIsFixing(false);
+        }
+    };
+
     if (!isHydrated) return null;
 
     return (
-        <div className="min-h-screen bg-slate-950 text-slate-100 flex font-sans overflow-hidden">
+        <div className="h-screen bg-slate-950 text-slate-100 flex font-sans overflow-hidden">
             {/* Sidebar */}
-            <aside className="w-64 border-r border-white/5 flex flex-col p-6 glass-dark shrink-0">
-                <div className="flex items-center gap-2 mb-12">
-                    <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-                        <Zap className="text-white fill-white" size={16} />
+            <aside className="w-64 border-r border-white/5 flex flex-col glass-dark shrink-0 h-full">
+                <div className="p-6 flex flex-col h-full">
+                    <div className="flex items-center gap-2 mb-12">
+                        <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                            <Zap className="text-white fill-white" size={16} />
+                        </div>
+                        <span className="text-xl font-black font-display tracking-tighter">ATSense</span>
                     </div>
-                    <span className="text-xl font-black font-display tracking-tighter">ATSense</span>
-                </div>
 
-                <nav className="flex-1 space-y-2">
-                    <SidebarItem href="/dashboard" icon={<LayoutDashboard size={18} />} label="Overview" />
-                    <SidebarItem href="/resumes" icon={<FileText size={18} />} label="My Resumes" />
-                    <SidebarItem href="/analysis" icon={<Target size={18} />} label="Job Analyzer" active />
-                    <SidebarItem href="/profile" icon={<User size={18} />} label="Profile" />
-                </nav>
+                    <nav className="flex-1 space-y-2">
+                        <SidebarItem href="/dashboard" icon={<LayoutDashboard size={18} />} label="Overview" />
+                        <SidebarItem href="/resumes" icon={<FileText size={18} />} label="My Resumes" />
+                        <SidebarItem href="/analysis" icon={<Target size={18} />} label="Job Analyzer" active />
+                        <SidebarItem href="/profile" icon={<User size={18} />} label="Profile" />
+                        <div className="h-px bg-white/5 my-4" />
+                        <SidebarItem href="#" icon={<Settings size={18} />} label="Settings" />
+                    </nav>
 
-                <div className="pt-6 border-t border-white/5 space-y-2">
-                    <SidebarItem href="#" icon={<Settings size={18} />} label="Settings" />
+                    <div className="mt-auto pt-6 border-t border-white/5">
+                        <LogoutButton />
+                    </div>
                 </div>
             </aside>
 
@@ -124,15 +194,37 @@ export default function AnalysisPage() {
                                         </div>
 
                                         {analysis.atsProfile?.rules && (
-                                            <div className="space-y-2">
-                                                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Platform Rules</h4>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {analysis.atsProfile.rules.map((rule: string, i: number) => (
-                                                        <span key={i} className="px-3 py-1 bg-white/5 border border-white/5 rounded-lg text-[10px] font-bold text-slate-400">
-                                                            {rule}
-                                                        </span>
-                                                    ))}
+                                            <div className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Platform Rules</h4>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {analysis.atsProfile.rules.map((rule: string, i: number) => (
+                                                            <span key={i} className="px-3 py-1 bg-white/5 border border-white/5 rounded-lg text-[10px] font-bold text-slate-400">
+                                                                {rule}
+                                                            </span>
+                                                        ))}
+                                                    </div>
                                                 </div>
+
+                                                {analysis.overallScore < 85 && (
+                                                    <button
+                                                        onClick={handleFixAll}
+                                                        disabled={isFixing}
+                                                        className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-xl shadow-indigo-500/20 disabled:opacity-50 group"
+                                                    >
+                                                        {isFixing ? (
+                                                            <>
+                                                                <Sparkles size={14} className="animate-spin text-indigo-200" />
+                                                                Fixing Low Scores...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Wand2 size={14} className="group-hover:rotate-12 transition-transform" />
+                                                                Fix All Low Scores
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                )}
                                             </div>
                                         )}
                                     </div>
@@ -158,12 +250,31 @@ export default function AnalysisPage() {
                                 <MetricCard label="XYZ Formatting" score={analysis.sectionScores.impact} icon={<Settings size={24} />} color="indigo" />
                             </div>
 
-                            {/* Keywords & Logic */}
+                            {/* Strategic Intelligence & Engineering Inventory */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                                <div className="p-10 glass-dark border border-white/5 rounded-[48px] space-y-8 h-full">
+                                    <div className="flex items-center gap-3">
+                                        <Brain className="text-purple-500" />
+                                        <h3 className="text-2xl font-bold font-display tracking-tight">Strategic Intelligence Report</h3>
+                                    </div>
+                                    <ReasoningPanel
+                                        reasoning={analysis.reasoning}
+                                        suggestions={analysis.suggestions}
+                                        forensics={analysis.forensics}
+                                    />
+                                </div>
+
+                                <div className="p-10 glass-dark border border-white/5 rounded-[48px] space-y-8 h-full">
+                                    <SkillIntelligence />
+                                </div>
+                            </div>
+
+                            {/* Keywords & Foundational Gaps */}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                 <div className="p-10 glass-dark border border-white/5 rounded-[48px] space-y-8">
                                     <h3 className="text-2xl font-bold flex items-center gap-3">
                                         <AlertCircle className="text-yellow-500" />
-                                        Foundational Gaps
+                                        Keyword Gaps
                                     </h3>
                                     <div className="flex flex-wrap gap-3">
                                         {analysis.keywords.missing.map((word, i) => (
@@ -173,14 +284,14 @@ export default function AnalysisPage() {
                                         ))}
                                     </div>
                                     <p className="text-slate-500 text-sm font-medium italic border-l-2 border-white/5 pl-4">
-                                        Detecting missing signals for your target role. Optimization recommended.
+                                        High-priority skills missing from your current draft.
                                     </p>
                                 </div>
 
                                 <div className="p-10 glass-dark border border-white/5 rounded-[48px] space-y-8">
                                     <h3 className="text-2xl font-bold flex items-center gap-3">
                                         <CheckCircle2 className="text-emerald-500" />
-                                        Verified Signals
+                                        Verified Keywords
                                     </h3>
                                     <div className="flex flex-wrap gap-3">
                                         {analysis.keywords.found.map((word, i) => (
@@ -190,7 +301,7 @@ export default function AnalysisPage() {
                                         ))}
                                     </div>
                                     <p className="text-slate-500 text-sm font-medium italic border-l-2 border-white/5 pl-4">
-                                        Strong alignment detected in these technical domains.
+                                        Successfully detected technical signals.
                                     </p>
                                 </div>
                             </div>
@@ -215,21 +326,24 @@ const SidebarItem = ({ icon, label, active = false, href }: any) => (
     </Link>
 );
 
-const ForensicStat = ({ label, value }: any) => (
-    <div className="space-y-2">
-        <div className="flex justify-between text-[10px] font-black uppercase tracking-wider">
-            <span>{label}</span>
-            <span>{(value * 100).toFixed(0)}%</span>
+const ForensicStat = ({ label, value }: any) => {
+    const clampedValue = Math.min(value, 100);
+    return (
+        <div className="space-y-2">
+            <div className="flex justify-between text-[10px] font-black uppercase tracking-wider">
+                <span>{label}</span>
+                <span>{clampedValue.toFixed(0)}%</span>
+            </div>
+            <div className="w-full h-1.5 bg-black/20 rounded-full overflow-hidden">
+                <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${clampedValue}%` }}
+                    className="h-full bg-white rounded-full"
+                />
+            </div>
         </div>
-        <div className="w-full h-1.5 bg-black/20 rounded-full overflow-hidden">
-            <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${value * 100}%` }}
-                className="h-full bg-white rounded-full"
-            />
-        </div>
-    </div>
-);
+    );
+};
 
 const MetricCard = ({ label, score, icon, color }: any) => (
     <div className="p-8 glass-dark border border-white/5 rounded-[40px] space-y-6">

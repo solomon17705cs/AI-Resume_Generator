@@ -26,6 +26,31 @@ export const StructuredForm: React.FC<StructuredFormProps> = ({
     jobDescription
 }) => {
     const [optimizingId, setOptimizingId] = useState<string | null>(null);
+    const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+
+    const handleGenerateSummary = async () => {
+        if (!jobDescription) {
+            alert("Please paste a Job Description first to help the AI align your summary.");
+            return;
+        }
+
+        setIsGeneratingSummary(true);
+        try {
+            const response = await axios.post('/api/generate-summary', {
+                resume: data,
+                jobDescription
+            });
+
+            if (response.data.success) {
+                setData(prev => ({ ...prev, summary: response.data.summary }));
+            }
+        } catch (error) {
+            console.error("Summary generation failed", error);
+            alert("AI Writer encountered an error. Please check your API key.");
+        } finally {
+            setIsGeneratingSummary(false);
+        }
+    };
 
     const updatePersonalInfo = (field: string, value: string) => {
         setData(prev => ({
@@ -181,12 +206,37 @@ export const StructuredForm: React.FC<StructuredFormProps> = ({
             {activeTab === "summary" && (
                 <section className="space-y-8">
                     <SectionHeader title="Professional Summary" />
-                    <textarea
-                        value={data.summary}
-                        onChange={(e) => setData(prev => ({ ...prev, summary: e.target.value }))}
-                        className="w-full bg-slate-900 border border-white/10 rounded-3xl p-6 text-slate-200 focus:outline-none focus:border-blue-500 min-h-[200px]"
-                        placeholder="Introduce yourself to the candidate pool..."
-                    />
+                    <div className="relative group/summary">
+                        <textarea
+                            value={data.summary}
+                            onChange={(e) => setData(prev => ({ ...prev, summary: e.target.value }))}
+                            className="w-full bg-slate-900 border border-white/10 rounded-3xl p-8 text-slate-200 focus:outline-none focus:border-blue-500 min-h-[250px] leading-relaxed transition-all"
+                            placeholder="Introduce yourself to the candidate pool..."
+                        />
+                        <button
+                            onClick={handleGenerateSummary}
+                            disabled={isGeneratingSummary}
+                            className={`absolute bottom-6 right-6 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all shadow-2xl ${isGeneratingSummary
+                                    ? 'bg-indigo-600/20 text-indigo-400 animate-pulse'
+                                    : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:scale-105 hover:shadow-indigo-500/40 opacity-0 group-hover/summary:opacity-100'
+                                }`}
+                        >
+                            {isGeneratingSummary ? (
+                                <>
+                                    <Sparkles size={14} className="animate-spin" />
+                                    Drafting...
+                                </>
+                            ) : (
+                                <>
+                                    <Wand2 size={14} />
+                                    AI Writer
+                                </>
+                            )}
+                        </button>
+                    </div>
+                    <p className="text-[10px] text-slate-500 italic px-4">
+                        💡 Pro Tip: A strong summary bridges your background with the specific needs of the Job Description.
+                    </p>
                 </section>
             )}
 
