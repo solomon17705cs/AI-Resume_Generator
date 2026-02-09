@@ -70,6 +70,8 @@ export interface ATSAnalysis {
         missing: string[];
     };
     reasoning: string;
+    atsType?: string;
+    atsProfile?: any;
     suggestions: {
         id: string;
         type: 'warning' | 'info' | 'critical';

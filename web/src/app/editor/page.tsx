@@ -20,7 +20,8 @@ import {
     Settings as SettingsIcon,
     ChevronRight,
     ShieldCheck,
-    Wand2
+    Wand2,
+    ArrowLeft
 } from "lucide-react";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
@@ -40,7 +41,9 @@ export default function EditorPage() {
 
     const [activeTab, setActiveTab] = useState("personal");
     const [jobDescription, setJobDescription] = useState("");
+    const [jobUrl, setJobUrl] = useState("");
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [isOptimizing, setIsOptimizing] = useState(false);
     const [previewScale, setPreviewScale] = useState(0.5);
     const [isExporting, setIsExporting] = useState(false);
     const [isHydrated, setIsHydrated] = useState(false);
@@ -67,11 +70,14 @@ export default function EditorPage() {
             const resumeText = JSON.stringify(resume);
             const response = await axios.post('/api/analyze', {
                 resume_text: resumeText,
-                job_description: jobDescription
+                job_description: jobDescription,
+                jd_url: jobUrl
             });
 
             setAnalysis({
                 overallScore: response.data.score,
+                atsType: response.data.ats_type,
+                atsProfile: response.data.ats_profile,
                 sectionScores: { experience: 80, skills: 70, impact: 90 },
                 keywords: {
                     found: response.data.found_keywords,
@@ -85,10 +91,39 @@ export default function EditorPage() {
                 })),
                 forensics: response.data.match_forensics
             });
+            router.push('/analysis');
         } catch (error) {
             console.error(error);
         } finally {
             setIsAnalyzing(false);
+        }
+    };
+
+    const handleNeuralOptimize = async () => {
+        if (!jobDescription) {
+            alert("Please paste a Job Description first.");
+            return;
+        }
+
+        setIsOptimizing(true);
+        try {
+            // Save current version to history first
+            useResumeStore.getState().saveToHistory();
+
+            const response = await axios.post('/api/optimize-full', {
+                resume,
+                jobDescription,
+                jobUrl
+            });
+
+            if (response.data.success) {
+                updateResume(response.data.optimizedResume);
+                alert(`Engine Success: Resume optimized for ${response.data.atsType} profile.`);
+            }
+        } catch (error: any) {
+            alert(error.response?.data?.error || "Neural Engine timed out.");
+        } finally {
+            setIsOptimizing(false);
         }
     };
 
@@ -160,12 +195,21 @@ export default function EditorPage() {
                                 <BrainCircuit size={16} className="text-cyan-400" />
                                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em]">Job Sync</h3>
                             </div>
-                            <textarea
-                                value={jobDescription}
-                                onChange={(e) => setJobDescription(e.target.value)}
-                                placeholder="Paste Job Description here to sync insights..."
-                                className="w-full h-40 bg-slate-950 border border-white/5 rounded-3xl p-5 text-xs font-medium text-slate-300 focus:outline-none focus:border-blue-500 transition-all placeholder:text-slate-700 resize-none leading-relaxed"
-                            />
+                            <div className="space-y-3">
+                                <input
+                                    type="text"
+                                    value={jobUrl}
+                                    onChange={(e) => setJobUrl(e.target.value)}
+                                    placeholder="Job URL (Detects ATS Profile)..."
+                                    className="w-full bg-slate-950 border border-white/5 rounded-2xl px-5 py-3 text-xs font-medium text-slate-300 focus:outline-none focus:border-blue-500 transition-all placeholder:text-slate-700 font-mono"
+                                />
+                                <textarea
+                                    value={jobDescription}
+                                    onChange={(e) => setJobDescription(e.target.value)}
+                                    placeholder="Paste Job Description here to sync insights..."
+                                    className="w-full h-40 bg-slate-950 border border-white/5 rounded-3xl p-5 text-xs font-medium text-slate-300 focus:outline-none focus:border-blue-500 transition-all placeholder:text-slate-700 resize-none leading-relaxed"
+                                />
+                            </div>
                             <button
                                 onClick={handleAnalyze}
                                 disabled={isAnalyzing || !jobDescription}
@@ -173,6 +217,14 @@ export default function EditorPage() {
                             >
                                 {isAnalyzing ? "Processing NLP..." : "Launch Analysis"}
                                 <Search size={16} />
+                            </button>
+                            <button
+                                onClick={handleNeuralOptimize}
+                                disabled={isOptimizing || !jobDescription}
+                                className="w-full py-4 bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 rounded-2xl font-black text-[10px] flex items-center justify-center gap-3 hover:bg-indigo-600 hover:text-white transition-all disabled:opacity-30 uppercase tracking-widest"
+                            >
+                                {isOptimizing ? "Optimizing..." : "Neural Fix"}
+                                <Wand2 size={16} />
                             </button>
                         </div>
 
@@ -226,7 +278,7 @@ export default function EditorPage() {
                                     <SectionHeader title="Professional History" onAdd={addExperience} />
                                     <ImpactHint />
                                     <div className="space-y-10">
-                                        {resume.experience.map((exp, idx) => (
+                                        {resume.experience.map((exp) => (
                                             <div key={exp.id} className="glass-dark border border-white/5 rounded-[32px] p-8 space-y-6 relative group">
                                                 <div className="grid grid-cols-2 gap-6">
                                                     <InputField label="Organization" value={exp.company} onChange={(v: string) => updateExperience(exp.id, { company: v })} />

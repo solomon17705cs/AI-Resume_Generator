@@ -22,8 +22,9 @@ interface ResumeState {
     // GitHub Integration
     githubLinked: boolean;
     githubUsername: string;
+    githubAvatar: string;
     githubRepos: any[];
-    setGitHubStatus: (status: { linked: boolean; username: string }) => void;
+    setGitHubStatus: (status: { linked: boolean; username: string; avatar?: string }) => void;
     setGitHubRepos: (repos: any[]) => void;
 }
 
@@ -87,6 +88,7 @@ export const useResumeStore = create<ResumeState>()(
             history: [],
             githubLinked: false,
             githubUsername: '',
+            githubAvatar: '',
             githubRepos: [],
 
             updateResume: (updates) => set((state) => ({
@@ -148,7 +150,8 @@ export const useResumeStore = create<ResumeState>()(
 
             setGitHubStatus: (status) => set({
                 githubLinked: status.linked,
-                githubUsername: status.username
+                githubUsername: status.username,
+                githubAvatar: status.avatar || ''
             }),
 
             setGitHubRepos: (repos) => set({

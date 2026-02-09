@@ -28,7 +28,7 @@ import { useRouter } from "next/navigation";
 export default function ProfilePage() {
     const router = useRouter();
     const {
-        githubLinked, githubUsername, resume,
+        githubLinked, githubUsername, githubAvatar, resume,
         updatePersonalInfo
     } = useResumeStore();
 
@@ -80,8 +80,12 @@ export default function ProfilePage() {
                     <div className="relative h-48 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-[40px] overflow-hidden shadow-2xl">
                         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20" />
                         <div className="absolute -bottom-12 left-12 flex items-end gap-6">
-                            <div className="w-32 h-32 bg-slate-900 border-4 border-slate-950 rounded-3xl flex items-center justify-center shadow-xl">
-                                <User size={64} className="text-blue-500" />
+                            <div className="w-32 h-32 bg-slate-900 border-4 border-slate-950 rounded-3xl flex items-center justify-center shadow-xl overflow-hidden">
+                                {githubAvatar ? (
+                                    <img src={githubAvatar} alt="Profile" className="w-full h-full object-cover" />
+                                ) : (
+                                    <User size={64} className="text-blue-500" />
+                                )}
                             </div>
                             <div className="mb-14 space-y-1">
                                 <h1 className="text-4xl font-black font-display tracking-tight text-white">{info.fullName || "Engineer Name"}</h1>
@@ -111,6 +115,14 @@ export default function ProfilePage() {
                                     <div className="flex justify-between items-center">
                                         <span className="text-[10px] font-black text-slate-600 uppercase">Status</span>
                                         <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-full text-[9px] font-black uppercase tracking-widest border border-emerald-500/20">Verified</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[10px] font-black text-slate-600 uppercase">Age</span>
+                                        <span className="text-xs font-bold text-slate-300">24 Years</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[10px] font-black text-slate-600 uppercase">Education</span>
+                                        <span className="text-[10px] font-bold text-slate-300 text-right">B.S. Computer Science</span>
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-[10px] font-black text-slate-600 uppercase">Tier</span>

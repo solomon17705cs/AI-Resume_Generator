@@ -101,17 +101,42 @@ export default function AnalysisPage() {
                         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
                             {/* Score Overview */}
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                <div className="lg:col-span-2 p-10 glass-dark border border-white/5 rounded-[48px] flex items-center justify-between gap-12">
-                                    <div className="space-y-4">
-                                        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-widest rounded-full">
-                                            <Zap size={12} /> Neural Match Active
-                                        </div>
-                                        <h3 className="text-4xl font-black font-display tracking-tight">System Alignment</h3>
-                                        <p className="text-slate-400 text-sm font-medium leading-relaxed max-w-sm">
-                                            Your resume has been measured against the Big Tech hiring logic. Here is your verified probability.
-                                        </p>
+                                <div className="lg:col-span-2 p-10 glass-dark border border-white/5 rounded-[48px] flex flex-col md:flex-row items-center justify-between gap-12 relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 p-8 opacity-[0.03]">
+                                        <Cpu size={200} />
                                     </div>
-                                    <div className="w-48 h-48 scale-110">
+                                    <div className="space-y-6 relative z-10 w-full md:w-auto">
+                                        <div className="flex flex-wrap gap-3">
+                                            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-widest rounded-full">
+                                                <Zap size={12} /> Neural Match Active
+                                            </div>
+                                            {analysis.atsType && (
+                                                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-black uppercase tracking-widest rounded-full">
+                                                    <ShieldCheck size={12} /> {analysis.atsType} Profile Detected
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <h3 className="text-4xl font-black font-display tracking-tight mb-2">System Alignment</h3>
+                                            <p className="text-slate-400 text-sm font-medium leading-relaxed max-w-sm">
+                                                {analysis.atsProfile?.description || "Your resume has been measured against standard Big Tech hiring logic."}
+                                            </p>
+                                        </div>
+
+                                        {analysis.atsProfile?.rules && (
+                                            <div className="space-y-2">
+                                                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Platform Rules</h4>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {analysis.atsProfile.rules.map((rule: string, i: number) => (
+                                                        <span key={i} className="px-3 py-1 bg-white/5 border border-white/5 rounded-lg text-[10px] font-bold text-slate-400">
+                                                            {rule}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="w-48 h-48 scale-110 shrink-0">
                                         <ATSScoreGauge score={analysis.overallScore} />
                                     </div>
                                 </div>

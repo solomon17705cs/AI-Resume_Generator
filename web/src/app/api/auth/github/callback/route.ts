@@ -33,9 +33,10 @@ export async function GET(req: NextRequest) {
         });
 
         const githubUsername = userRes.data.login;
+        const githubAvatar = userRes.data.avatar_url;
 
         // Redirect back to dashboard with status
-        const response = NextResponse.redirect(new URL(`/dashboard?github_linked=true&username=${githubUsername}`, req.url));
+        const response = NextResponse.redirect(new URL(`/dashboard?github_linked=true&username=${githubUsername}&avatar=${encodeURIComponent(githubAvatar)}`, req.url));
 
         // Store access token in cookie
         response.cookies.set('github_access_token', accessToken, {

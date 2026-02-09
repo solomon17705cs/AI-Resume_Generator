@@ -52,9 +52,10 @@ export default function DashboardPage() {
         const params = new URLSearchParams(window.location.search);
         const linked = params.get('github_linked');
         const username = params.get('username');
+        const avatar = params.get('avatar');
 
         if (linked === 'true' && username) {
-            setGitHubStatus({ linked: true, username });
+            setGitHubStatus({ linked: true, username, avatar: avatar || undefined });
             // Clean up the URL
             window.history.replaceState({}, document.title, "/dashboard");
         }
@@ -227,17 +228,18 @@ export default function DashboardPage() {
                                                 </div>
                                             </div>
 
-                                            <div className="pt-6 flex items-center justify-between border-t border-white/5 mt-6">
-                                                <span className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em]">
-                                                    {repo.language || 'Code'}
-                                                </span>
-                                                <button
-                                                    onClick={() => handleImportRepo(repo)}
-                                                    disabled={importingId === repo.id}
-                                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg active:scale-95 disabled:opacity-50"
+                                            <div className="pt-6 border-t border-white/5 mt-6 flex items-center justify-between">
+                                                <div className="flex-1">
+                                                    <LanguageBar languages={repo.languages} />
+                                                </div>
+                                                <a
+                                                    href={repo.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="p-1.5 text-slate-600 hover:text-white transition-colors flex shrink-0"
                                                 >
-                                                    {importingId === repo.id ? "Optimizing..." : "Import Repo"}
-                                                </button>
+                                                    <ChevronRight size={14} />
+                                                </a>
                                             </div>
                                         </motion.div>
                                     ))
@@ -285,9 +287,81 @@ export default function DashboardPage() {
     );
 }
 
+const getLanguageColor = (language: string) => {
+    const colors: Record<string, string> = {
+        "TypeScript": "#3178c6",
+        "JavaScript": "#f1e05a",
+        "Python": "#3572a5",
+        "Java": "#b07219",
+        "C#": "#178600",
+        "C++": "#f34b7d",
+        "HTML": "#e34c26",
+        "CSS": "#563d7c",
+        "SCSS": "#c6538c",
+        "Go": "#00add8",
+        "Ruby": "#701516",
+        "PHP": "#4f5d95",
+        "Swift": "#ffac45",
+        "Kotlin": "#7f52ff",
+        "Rust": "#dea584",
+        "Scala": "#c22d40",
+        "Dart": "#00b4ab",
+        "Shell": "#89e051",
+        "SQL": "#e38c00",
+        "JSON": "#292929",
+        "Markdown": "#083fa1",
+        "YAML": "#cb171e",
+        "XML": "#006688",
+        "Default": "#444"
+    };
+    return colors[language] || colors["Default"];
+};
+
 const SidebarItem = ({ icon, label, active = false, href }: any) => (
     <Link href={href || "#"} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${active ? 'bg-blue-600/10 text-blue-400' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'}`}>
         {icon}
         {label}
     </Link>
 );
+
+const LanguageBar = ({ languages }: { languages: any[] }) => {
+    if (!languages || languages.length === 0) {
+        return (
+            <div className="flex items-center gap-2 pt-2">
+                <div className="w-2 h-2 rounded-full bg-slate-800" />
+                <span className="text-[10px] font-bold text-slate-600 uppercase">No languages detected</span>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-3">
+            <div className="flex h-1.5 w-full rounded-full overflow-hidden bg-white/5 shadow-inner">
+                {languages.slice(0, 5).map((lang, i) => (
+                    <div
+                        key={i}
+                        style={{
+                            width: `${lang.percentage}%`,
+                            backgroundColor: getLanguageColor(lang.name)
+                        }}
+                        className="h-full transition-all duration-500 ease-out"
+                    />
+                ))}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                {languages.slice(0, 4).map((lang, i) => (
+                    <div key={i} className="flex items-center gap-1.5 group/langitem">
+                        <div
+                            className="w-2 h-2 rounded-full shadow-[0_0_5px_rgba(0,0,0,0.5)]"
+                            style={{ backgroundColor: getLanguageColor(lang.name) }}
+                        />
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider group-hover/langitem:text-slate-200 transition-colors">
+                            {lang.name} <span className="text-slate-600 ml-0.5">{lang.percentage.toFixed(1)}%</span>
+                        </span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
