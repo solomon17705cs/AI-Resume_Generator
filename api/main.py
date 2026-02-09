@@ -1,7 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional, Dict
-import spacy
 from keybert import KeyBERT
 from sentence_transformers import SentenceTransformer, util
 import uvicorn
@@ -10,21 +9,19 @@ import os
 app = FastAPI(title="ATSense Intelligence Engine V2")
 
 # Advanced Models Cluster
-nlp = None
 kw_model = None
 sim_model = None
 
 def get_models():
-    global nlp, kw_model, sim_model
-    if nlp is None:
+    global kw_model, sim_model
+    if kw_model is None:
         try:
             # Using standard models for robustness
-            nlp = spacy.load("en_core_web_sm")
             kw_model = KeyBERT()
             sim_model = SentenceTransformer('all-MiniLM-L6-v2')
         except Exception as e:
             print(f"Model error: {e}")
-    return nlp, kw_model, sim_model
+    return kw_model, sim_model
 
 class AnalysisRequest(BaseModel):
     resume_text: str
@@ -40,7 +37,7 @@ class AnalysisResponse(BaseModel):
 
 @app.post("/analyze", response_model=AnalysisResponse)
 async def analyze(request: AnalysisRequest):
-    nlp_l, kw_l, sim_l = get_models()
+    kw_l, sim_l = get_models()
     
     # 1. Advanced Keyword Profiling (Using KeyBERT for better extraction)
     jd_keywords = kw_l.extract_keywords(request.job_description, keyphrase_ngram_range=(1, 2), top_n=15)
