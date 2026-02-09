@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { ResumeData, ATSAnalysis } from '@/types/resume';
+import { ResumeData, ATSAnalysis, Experience, Project } from '@/types/resume';
 
 interface ResumeState {
     resume: ResumeData;
@@ -30,6 +30,9 @@ interface ResumeState {
     setGitHubStatus: (status: { linked: boolean; username: string; avatar?: string }) => void;
     setGitHubRepos: (repos: any[]) => void;
     syncLanguagesFromGitHub: () => void;
+    addSkillCategory: () => void;
+    updateSkillCategoryName: (id: string, newName: string) => void;
+    removeSkillCategory: (id: string) => void;
 }
 
 const DEFAULT_RESUME: ResumeData = {
@@ -69,8 +72,7 @@ const DEFAULT_RESUME: ResumeData = {
         }
     ],
     skills: [
-        { id: '1', name: 'Languages', skills: ['TypeScript', 'Python', 'Go', 'Rust'] },
-        { id: '2', name: 'AI/ML', skills: ['PyTorch', 'Transformers', 'spaCy', 'LangChain'] }
+        { id: '1', name: 'Languages', skills: [] }
     ],
     education: [
         {
@@ -97,13 +99,13 @@ export const useResumeStore = create<ResumeState>()(
             jobDescription: '',
             jobUrl: '',
 
-            updateResume: (updates) => set((state) => ({
+            updateResume: (updates: Partial<ResumeData>) => set((state) => ({
                 resume: { ...state.resume, ...updates, lastModified: new Date().toISOString() }
             })),
 
-            setAnalysis: (analysis) => set({ analysis }),
+            setAnalysis: (analysis: ATSAnalysis) => set({ analysis }),
 
-            setJobContext: (description, url) => set({
+            setJobContext: (description: string, url: string) => set({
                 jobDescription: description,
                 jobUrl: url
             }),
@@ -112,19 +114,19 @@ export const useResumeStore = create<ResumeState>()(
                 history: [state.resume, ...state.history].slice(0, 10)
             })),
 
-            restoreFromHistory: (id) => set((state) => {
+            restoreFromHistory: (id: string) => set((state) => {
                 const historical = state.history.find(r => r.id === id);
                 return historical ? { resume: historical } : state;
             }),
 
-            updatePersonalInfo: (info) => set((state) => ({
+            updatePersonalInfo: (info: Partial<ResumeData['personalInfo']>) => set((state) => ({
                 resume: {
                     ...state.resume,
                     personalInfo: { ...state.resume.personalInfo, ...info }
                 }
             })),
 
-            updateExperience: (id, updates) => set((state) => ({
+            updateExperience: (id: string, updates: Partial<Experience>) => set((state) => ({
                 resume: {
                     ...state.resume,
                     experience: state.resume.experience.map(exp =>
@@ -152,34 +154,33 @@ export const useResumeStore = create<ResumeState>()(
                 }
             })),
 
-            removeExperience: (id) => set((state) => ({
+            removeExperience: (id: string) => set((state) => ({
                 resume: {
                     ...state.resume,
                     experience: state.resume.experience.filter(exp => exp.id !== id)
                 }
             })),
 
-            setGitHubStatus: (status) => set({
+            setGitHubStatus: (status: { linked: boolean; username: string; avatar?: string }) => set({
                 githubLinked: status.linked,
                 githubUsername: status.username,
                 githubAvatar: status.avatar || ''
             }),
 
-            setGitHubRepos: (repos) => set({
+            setGitHubRepos: (repos: any[]) => set({
                 githubRepos: repos
             }),
 
             syncLanguagesFromGitHub: () => set((state) => {
                 const { processGithubLanguages } = require('@/utils/skillProcessor');
 
-                // Collect all languages from all repos
                 const allLanguages: { name: string; percentage: number; color?: string }[] = [];
                 state.githubRepos.forEach((repo) => {
                     if (repo.languages && Array.isArray(repo.languages)) {
                         repo.languages.forEach((lang: any) => {
                             allLanguages.push({
                                 name: lang.name,
-                                percentage: lang.percentage || 1, // Default to 1 if no percentage
+                                percentage: lang.percentage || 1,
                                 color: lang.color
                             });
                         });
@@ -188,10 +189,7 @@ export const useResumeStore = create<ResumeState>()(
 
                 if (allLanguages.length === 0) return state;
 
-                // Process into categories
                 const categories = processGithubLanguages(allLanguages);
-
-                // Convert to ResumeData skills format
                 const existingSkills = [...state.resume.skills];
 
                 Object.values(categories).forEach((cat: any) => {
@@ -202,14 +200,12 @@ export const useResumeStore = create<ResumeState>()(
                     const newSkills = cat.skills.map((s: any) => s.name);
 
                     if (existingCatIndex >= 0) {
-                        // Merge skills in existing category
                         const mergedSkills = Array.from(new Set([...existingSkills[existingCatIndex].skills, ...newSkills]));
                         existingSkills[existingCatIndex] = {
                             ...existingSkills[existingCatIndex],
                             skills: mergedSkills
                         };
                     } else {
-                        // Add new category
                         existingSkills.push({
                             id: `skill-${Math.random().toString(36).substr(2, 9)}`,
                             name: cat.name,
@@ -226,6 +222,32 @@ export const useResumeStore = create<ResumeState>()(
                     }
                 };
             }),
+
+            addSkillCategory: () => set((state) => ({
+                resume: {
+                    ...state.resume,
+                    skills: [
+                        ...state.resume.skills,
+                        { id: `skill-${Math.random().toString(36).substr(2, 9)}`, name: 'New Domain', skills: [] }
+                    ]
+                }
+            })),
+
+            updateSkillCategoryName: (id: string, newName: string) => set((state) => ({
+                resume: {
+                    ...state.resume,
+                    skills: state.resume.skills.map(cat =>
+                        cat.id === id ? { ...cat, name: newName } : cat
+                    )
+                }
+            })),
+
+            removeSkillCategory: (id: string) => set((state) => ({
+                resume: {
+                    ...state.resume,
+                    skills: state.resume.skills.filter(cat => cat.id !== id)
+                }
+            })),
         }),
         {
             name: 'atsense-resume-storage',

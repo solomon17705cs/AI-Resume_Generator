@@ -18,7 +18,6 @@ import {
     History,
     LayoutDashboard,
     Settings as SettingsIcon,
-    ChevronRight,
     ShieldCheck,
     Wand2,
     ArrowLeft,
@@ -27,7 +26,9 @@ import {
     X,
     GripVertical,
     Check,
-    Github
+    Github,
+    Layers,
+    ChevronDown
 } from "lucide-react";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
@@ -44,7 +45,7 @@ export default function EditorPage() {
         resume, analysis, setAnalysis, updatePersonalInfo,
         updateExperience, addExperience, removeExperience, updateResume,
         githubLinked, jobDescription, jobUrl, setJobContext,
-        syncLanguagesFromGitHub
+        syncLanguagesFromGitHub, addSkillCategory, updateSkillCategoryName
     } = useResumeStore();
 
     const [activeTab, setActiveTab] = useState("personal");
@@ -474,32 +475,56 @@ export default function EditorPage() {
                             )}
 
                             {activeTab === "skills" && (
-                                <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4">
-                                    <div className="flex items-center justify-between">
-                                        <SectionHeader title="Skill Inventory" />
-                                        {githubLinked && (
-                                            <button
-                                                onClick={syncLanguagesFromGitHub}
-                                                className="flex items-center gap-2 px-4 py-2 bg-slate-900 border border-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:border-blue-500/50 transition-all group"
-                                            >
-                                                <Github size={14} className="group-hover:scale-110 transition-transform" />
-                                                Sync from GitHub
-                                            </button>
-                                        )}
+                                <div className="space-y-16 animate-in fade-in slide-in-from-bottom-4">
+                                    <div className="space-y-10">
+                                        <div className="flex items-center justify-between">
+                                            <SectionHeader title="Skill Inventory" />
+                                            <div className="flex items-center gap-3">
+                                                {githubLinked && (
+                                                    <button
+                                                        onClick={syncLanguagesFromGitHub}
+                                                        className="flex items-center gap-2 px-4 py-2 bg-slate-900 border border-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:border-blue-500/50 transition-all group"
+                                                    >
+                                                        <Github size={14} className="group-hover:scale-110 transition-transform" />
+                                                        Sync from GitHub
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <p className="text-[10px] text-slate-500 font-medium max-w-md leading-relaxed px-2">
+                                            Pull your physical repository metadata to automatically populate your core language proficiency.
+                                        </p>
                                     </div>
-                                    {resume.skills.map((category) => (
-                                        <SkillTagInput
-                                            key={category.id}
-                                            label={category.name}
-                                            skills={category.skills}
-                                            onChange={(newSkills) => {
-                                                const updated = resume.skills.map(c =>
-                                                    c.id === category.id ? { ...c, skills: newSkills } : c
-                                                );
-                                                updateResume({ skills: updated });
-                                            }}
-                                        />
-                                    ))}
+
+                                    <div className="space-y-10 pt-10 border-t border-white/5">
+                                        <div className="flex items-center justify-between">
+                                            <SectionHeader title="Domain" />
+                                            <button
+                                                onClick={addSkillCategory}
+                                                className="flex items-center gap-3 px-6 py-3 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-2xl hover:bg-blue-600 hover:text-white transition-all font-black text-[10px] uppercase tracking-widest group shadow-lg shadow-blue-900/5"
+                                            >
+                                                <Layers size={16} className="group-hover:rotate-12 transition-transform" />
+                                                + Add New Domain
+                                            </button>
+                                        </div>
+                                        <div className="space-y-12">
+                                            {resume.skills.map((category) => (
+                                                <SkillTagInput
+                                                    key={category.id}
+                                                    label={category.name}
+                                                    skills={category.skills}
+                                                    onLabelChange={(newName) => updateSkillCategoryName(category.id, newName)}
+                                                    onDelete={() => removeSkillCategory(category.id)}
+                                                    onChange={(newSkills) => {
+                                                        const updated = resume.skills.map(c =>
+                                                            c.id === category.id ? { ...c, skills: newSkills } : c
+                                                        );
+                                                        updateResume({ skills: updated });
+                                                    }}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
                                 </div>
                             )}
 
