@@ -14,7 +14,7 @@ export const Preview: React.FC<PreviewProps> = ({ data, scale = 1 }) => {
 
     return (
         <div
-            className="bg-white text-slate-900 shadow-2xl origin-top"
+            className="bg-white text-slate-900 shadow-2xl origin-top-left"
             style={{
                 width: '210mm',
                 minHeight: '297mm',

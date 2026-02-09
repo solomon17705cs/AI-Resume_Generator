@@ -377,7 +377,14 @@ export default function EditorPage() {
                         </div>
                     </div>
                     <div className="flex-1 overflow-auto p-12 bg-[#020617] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] flex justify-center custom-scrollbar">
-                        <div className="drop-shadow-[0_40px_80px_rgba(0,0,0,0.9)] h-fit mb-40 rounded-lg overflow-hidden border border-white/5">
+                        <div
+                            className="drop-shadow-[0_40px_80px_rgba(0,0,0,0.9)] h-fit mb-40 rounded-lg overflow-hidden border border-white/5"
+                            style={{
+                                width: `${210 * previewScale}mm`,
+                                height: `${297 * previewScale}mm`,
+                                minWidth: `${210 * previewScale}mm`
+                            }}
+                        >
                             <Preview data={resume as any} scale={previewScale} />
                         </div>
                     </div>
