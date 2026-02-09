@@ -22,8 +22,10 @@ import {
 import Link from "next/link";
 import { useResumeStore } from "@/store/useResumeStore";
 import axios from "axios";
+import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
+    const router = useRouter();
     const {
         githubLinked, githubUsername, githubRepos,
         setGitHubStatus, setGitHubRepos, updateResume, resume
@@ -31,6 +33,19 @@ export default function DashboardPage() {
 
     const [isSyncing, setIsSyncing] = useState(false);
     const [importingId, setImportingId] = useState<number | null>(null);
+    const [isHydrated, setIsHydrated] = useState(false);
+
+    // Handle Hydration for Persisted Store
+    useEffect(() => {
+        setIsHydrated(true);
+    }, []);
+
+    // Auth Guard
+    useEffect(() => {
+        if (isHydrated && !githubLinked) {
+            router.push("/login");
+        }
+    }, [isHydrated, githubLinked, router]);
 
     // Capture GitHub callback status from URL
     useEffect(() => {
@@ -51,6 +66,15 @@ export default function DashboardPage() {
             fetchRepos();
         }
     }, [githubLinked]);
+
+    // Don't render until hydrated to avoid flashing wrong state
+    if (!isHydrated) {
+        return (
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            </div>
+        );
+    }
 
     const fetchRepos = async () => {
         setIsSyncing(true);
@@ -104,15 +128,15 @@ export default function DashboardPage() {
                 </div>
 
                 <nav className="flex-1 space-y-2">
-                    <SidebarItem icon={<LayoutDashboard size={18} />} label="Overview" active />
-                    <SidebarItem icon={<FileText size={18} />} label="My Resumes" />
-                    <SidebarItem icon={<Target size={18} />} label="Job Analyzer" />
-                    <SidebarItem icon={<Briefcase size={18} />} label="Applications" />
+                    <SidebarItem href="/dashboard" icon={<LayoutDashboard size={18} />} label="Overview" active />
+                    <SidebarItem href="/resumes" icon={<FileText size={18} />} label="My Resumes" />
+                    <SidebarItem href="/analysis" icon={<Target size={18} />} label="Job Analyzer" />
+                    <SidebarItem href="#" icon={<Briefcase size={18} />} label="Applications" />
                 </nav>
 
                 <div className="pt-6 border-t border-white/5 space-y-2">
-                    <SidebarItem icon={<Settings size={18} />} label="Settings" />
-                    <SidebarItem icon={<User size={18} />} label="Profile" />
+                    <SidebarItem href="#" icon={<Settings size={18} />} label="Settings" />
+                    <SidebarItem href="/profile" icon={<User size={18} />} label="Profile" />
                 </div>
             </aside>
 
@@ -261,9 +285,9 @@ export default function DashboardPage() {
     );
 }
 
-const SidebarItem = ({ icon, label, active = false }: any) => (
-    <button className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${active ? 'bg-blue-600/10 text-blue-400' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'}`}>
+const SidebarItem = ({ icon, label, active = false, href }: any) => (
+    <Link href={href || "#"} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${active ? 'bg-blue-600/10 text-blue-400' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'}`}>
         {icon}
         {label}
-    </button>
+    </Link>
 );

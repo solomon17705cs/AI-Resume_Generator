@@ -16,7 +16,27 @@ import {
   FileText
 } from "lucide-react";
 
+import { useResumeStore } from "@/store/useResumeStore";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+
 export default function LandingPage() {
+  const { githubLinked } = useResumeStore();
+  const router = useRouter();
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (isHydrated && githubLinked) {
+      router.push("/dashboard");
+    }
+  }, [isHydrated, githubLinked, router]);
+
+  if (!isHydrated) return null;
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50 overflow-x-hidden font-sans">
       {/* SaaS Navigation */}

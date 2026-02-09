@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { ResumeData, ATSAnalysis } from '@/types/resume';
 
 interface ResumeState {
@@ -78,77 +79,85 @@ const DEFAULT_RESUME: ResumeData = {
     metadata: {}
 };
 
-export const useResumeStore = create<ResumeState>((set) => ({
-    resume: DEFAULT_RESUME,
-    analysis: null,
-    history: [],
-    githubLinked: false,
-    githubUsername: '',
-    githubRepos: [],
+export const useResumeStore = create<ResumeState>()(
+    persist(
+        (set) => ({
+            resume: DEFAULT_RESUME,
+            analysis: null,
+            history: [],
+            githubLinked: false,
+            githubUsername: '',
+            githubRepos: [],
 
-    updateResume: (updates) => set((state) => ({
-        resume: { ...state.resume, ...updates, lastModified: new Date().toISOString() }
-    })),
+            updateResume: (updates) => set((state) => ({
+                resume: { ...state.resume, ...updates, lastModified: new Date().toISOString() }
+            })),
 
-    setAnalysis: (analysis) => set({ analysis }),
+            setAnalysis: (analysis) => set({ analysis }),
 
-    saveToHistory: () => set((state) => ({
-        history: [state.resume, ...state.history].slice(0, 10)
-    })),
+            saveToHistory: () => set((state) => ({
+                history: [state.resume, ...state.history].slice(0, 10)
+            })),
 
-    restoreFromHistory: (id) => set((state) => {
-        const historical = state.history.find(r => r.id === id);
-        return historical ? { resume: historical } : state;
-    }),
+            restoreFromHistory: (id) => set((state) => {
+                const historical = state.history.find(r => r.id === id);
+                return historical ? { resume: historical } : state;
+            }),
 
-    updatePersonalInfo: (info) => set((state) => ({
-        resume: {
-            ...state.resume,
-            personalInfo: { ...state.resume.personalInfo, ...info }
-        }
-    })),
-
-    updateExperience: (id, updates) => set((state) => ({
-        resume: {
-            ...state.resume,
-            experience: state.resume.experience.map(exp =>
-                exp.id === id ? { ...exp, ...updates } : exp
-            )
-        }
-    })),
-
-    addExperience: () => set((state) => ({
-        resume: {
-            ...state.resume,
-            experience: [
-                ...state.resume.experience,
-                {
-                    id: Math.random().toString(36).substr(2, 9),
-                    company: '',
-                    role: '',
-                    location: '',
-                    startDate: '',
-                    endDate: '',
-                    isCurrent: false,
-                    bullets: ['']
+            updatePersonalInfo: (info) => set((state) => ({
+                resume: {
+                    ...state.resume,
+                    personalInfo: { ...state.resume.personalInfo, ...info }
                 }
-            ]
+            })),
+
+            updateExperience: (id, updates) => set((state) => ({
+                resume: {
+                    ...state.resume,
+                    experience: state.resume.experience.map(exp =>
+                        exp.id === id ? { ...exp, ...updates } : exp
+                    )
+                }
+            })),
+
+            addExperience: () => set((state) => ({
+                resume: {
+                    ...state.resume,
+                    experience: [
+                        ...state.resume.experience,
+                        {
+                            id: Math.random().toString(36).substr(2, 9),
+                            company: '',
+                            role: '',
+                            location: '',
+                            startDate: '',
+                            endDate: '',
+                            isCurrent: false,
+                            bullets: ['']
+                        }
+                    ]
+                }
+            })),
+
+            removeExperience: (id) => set((state) => ({
+                resume: {
+                    ...state.resume,
+                    experience: state.resume.experience.filter(exp => exp.id !== id)
+                }
+            })),
+
+            setGitHubStatus: (status) => set({
+                githubLinked: status.linked,
+                githubUsername: status.username
+            }),
+
+            setGitHubRepos: (repos) => set({
+                githubRepos: repos
+            }),
+        }),
+        {
+            name: 'atsense-resume-storage',
+            storage: createJSONStorage(() => localStorage),
         }
-    })),
-
-    removeExperience: (id) => set((state) => ({
-        resume: {
-            ...state.resume,
-            experience: state.resume.experience.filter(exp => exp.id !== id)
-        }
-    })),
-
-    setGitHubStatus: (status) => set({
-        githubLinked: status.linked,
-        githubUsername: status.username
-    }),
-
-    setGitHubRepos: (repos) => set({
-        githubRepos: repos
-    }),
-}));
+    )
+);

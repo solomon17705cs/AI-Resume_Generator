@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useResumeStore } from "@/store/useResumeStore";
 import { ATSScoreGauge } from "@/components/dashboard/ATSScoreGauge";
 import { ReasoningPanel } from "@/components/dashboard/ReasoningPanel";
@@ -25,16 +25,39 @@ import {
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { VersionHistory } from "@/components/editor/VersionHistory";
 import { SkillTagInput } from "@/components/editor/SkillTagInput";
 import { ImpactHint } from "@/components/editor/ImpactHint";
 
 export default function EditorPage() {
-    const { resume, analysis, setAnalysis, updatePersonalInfo, updateExperience, addExperience, updateResume } = useResumeStore();
-    const [activeTab, setActiveTab] = useState("experience");
+    const router = useRouter();
+    const {
+        resume, analysis, setAnalysis, updatePersonalInfo,
+        updateExperience, addExperience, removeExperience, updateResume,
+        githubLinked
+    } = useResumeStore();
+
+    const [activeTab, setActiveTab] = useState("personal");
     const [jobDescription, setJobDescription] = useState("");
     const [isAnalyzing, setIsAnalyzing] = useState(false);
-    const [previewScale, setPreviewScale] = useState(0.6);
+    const [previewScale, setPreviewScale] = useState(0.5);
+    const [isExporting, setIsExporting] = useState(false);
+    const [isHydrated, setIsHydrated] = useState(false);
+
+    // Hydration check
+    useEffect(() => {
+        setIsHydrated(true);
+    }, []);
+
+    // Auth Guard
+    useEffect(() => {
+        if (isHydrated && !githubLinked) {
+            router.push("/login");
+        }
+    }, [isHydrated, githubLinked, router]);
+
+    if (!isHydrated) return null;
 
     const handleAnalyze = async () => {
         if (!jobDescription) return;
