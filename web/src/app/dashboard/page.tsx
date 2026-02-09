@@ -18,7 +18,8 @@ import {
     Github,
     RefreshCcw,
     Sparkles,
-    Check
+    Check,
+    Compass
 } from "lucide-react";
 import Link from "next/link";
 import { useResumeStore } from "@/store/useResumeStore";
@@ -31,13 +32,15 @@ export default function DashboardPage() {
     const {
         githubLinked, githubUsername, githubRepos,
         setGitHubStatus, setGitHubRepos, updateResume, resume,
-        syncLanguagesFromGitHub
+        syncLanguagesFromGitHub, recommendationRequests, userRole
     } = useResumeStore();
 
     const [isSyncing, setIsSyncing] = useState(false);
     const [importingId, setImportingId] = useState<number | null>(null);
     const [isHydrated, setIsHydrated] = useState(false);
     const [languagesSynced, setLanguagesSynced] = useState(false);
+
+    const isJobReferred = recommendationRequests.some(r => r.status === 'Approved');
 
     // Handle Hydration for Persisted Store
     useEffect(() => {
@@ -46,10 +49,14 @@ export default function DashboardPage() {
 
     // Auth Guard
     useEffect(() => {
-        if (isHydrated && !githubLinked) {
-            router.push("/login");
+        if (isHydrated) {
+            if (!githubLinked && !userRole) {
+                router.push("/login");
+            } else if (userRole === 'admin') {
+                router.push("/recommendations");
+            }
         }
-    }, [isHydrated, githubLinked, router]);
+    }, [isHydrated, githubLinked, userRole, router]);
 
     // Capture GitHub callback status from URL
     useEffect(() => {
@@ -145,10 +152,11 @@ export default function DashboardPage() {
                     </div>
 
                     <nav className="flex-1 space-y-2">
-                        <SidebarItem href="/dashboard" icon={<LayoutDashboard size={18} />} label="Overview" active />
+                        <SidebarItem href="/dashboard" icon={<LayoutDashboard size={18} />} label="Overview" active={true} />
                         <SidebarItem href="/resumes" icon={<FileText size={18} />} label="My Resumes" />
                         <SidebarItem href="/analysis" icon={<Target size={18} />} label="Job Analyzer" />
-                        <SidebarItem href="#" icon={<Briefcase size={18} />} label="Applications" />
+                        <SidebarItem href="/jobs" icon={<Compass size={18} />} label="Pathfinder" />
+                        <SidebarItem href="/recommendations" icon={<ShieldCheck size={18} />} label="Recommendations" />
                         <div className="h-px bg-white/5 my-4" />
                         <SidebarItem href="#" icon={<Settings size={18} />} label="Settings" />
                         <SidebarItem href="/profile" icon={<User size={18} />} label="Profile" />
@@ -166,10 +174,22 @@ export default function DashboardPage() {
 
                     {/* Header */}
                     <header className="flex justify-between items-end">
-                        <div>
-                            <h1 className="text-4xl font-black font-display tracking-tight mb-2">
-                                Workspace {githubUsername && <span className="text-blue-500">/ {githubUsername}</span>}
-                            </h1>
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-4">
+                                <h1 className="text-4xl font-black font-display tracking-tight">
+                                    Workspace {githubUsername && <span className="text-blue-500">/ {githubUsername}</span>}
+                                </h1>
+                                {isJobReferred && (
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.8 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-[10px] font-black uppercase text-emerald-500"
+                                    >
+                                        <ShieldCheck size={12} />
+                                        Job Referred ✔
+                                    </motion.div>
+                                )}
+                            </div>
                             <p className="text-slate-500 text-sm font-medium">Engineer your career trajectory with precision AI.</p>
                         </div>
                         <Link href="/editor" className="flex items-center gap-2 px-8 py-3.5 bg-white text-slate-950 rounded-2xl font-black text-sm hover:scale-105 transition-all shadow-xl shadow-white/10 active:scale-95">

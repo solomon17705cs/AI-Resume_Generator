@@ -72,10 +72,20 @@ export interface ATSAnalysis {
     reasoning: string;
     atsType?: string;
     atsProfile?: any;
+    keywordMetadata?: {
+        keyword: string;
+        category: string;
+        confidence: number;
+        context: string;
+    }[];
     suggestions: {
         id: string;
-        type: 'warning' | 'info' | 'critical';
-        message: string;
+        type: 'warning' | 'info' | 'critical' | 'WARNING' | 'INFO' | 'CRITICAL';
+        message?: string;
+        title?: string;
+        description?: string;
+        action?: string;
+        examples?: { before: string; after: string }[];
         fix?: string;
     }[];
     forensics?: {
@@ -83,4 +93,17 @@ export interface ATSAnalysis {
         keyword_density: number;
         structural_integrity: number;
     };
+}
+export interface RecommendationRequest {
+    id: string;
+    studentName: string;
+    studentEmail: string;
+    purpose: 'Internship' | 'Job';
+    company: string;
+    message?: string;
+    status: 'Pending' | 'Approved' | 'Rejected';
+    createdAt: string;
+    letterContent?: string;
+    isJobReferred: boolean;
+    studentProfile?: ResumeData;
 }

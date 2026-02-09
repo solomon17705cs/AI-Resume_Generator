@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+<<<<<<< Updated upstream
 import { ResumeData, ATSAnalysis, Experience, Project } from '@/types/resume';
+=======
+import { ResumeData, ATSAnalysis, RecommendationRequest } from '@/types/resume';
+>>>>>>> Stashed changes
 
 interface ResumeState {
     resume: ResumeData;
@@ -8,8 +12,11 @@ interface ResumeState {
     history: ResumeData[];
     jobDescription: string;
     jobUrl: string;
+    recommendationRequests: RecommendationRequest[];
+    userRole: 'user' | 'admin' | null;
 
     // Actions
+    setUserRole: (role: 'user' | 'admin' | null) => void;
     updateResume: (updates: Partial<ResumeData>) => void;
     setAnalysis: (analysis: ATSAnalysis) => void;
     setJobContext: (description: string, url: string) => void;
@@ -30,9 +37,16 @@ interface ResumeState {
     setGitHubStatus: (status: { linked: boolean; username: string; avatar?: string }) => void;
     setGitHubRepos: (repos: any[]) => void;
     syncLanguagesFromGitHub: () => void;
+<<<<<<< Updated upstream
     addSkillCategory: () => void;
     updateSkillCategoryName: (id: string, newName: string) => void;
     removeSkillCategory: (id: string) => void;
+=======
+
+    // Recommendation Flow
+    requestRecommendation: (details: Pick<RecommendationRequest, 'purpose' | 'company' | 'message'>) => void;
+    updateRecommendationStatus: (id: string, status: 'Approved' | 'Rejected', letter?: string) => void;
+>>>>>>> Stashed changes
 }
 
 const DEFAULT_RESUME: ResumeData = {
@@ -98,6 +112,10 @@ export const useResumeStore = create<ResumeState>()(
             githubRepos: [],
             jobDescription: '',
             jobUrl: '',
+            recommendationRequests: [],
+            userRole: null,
+
+            setUserRole: (role) => set({ userRole: role }),
 
             updateResume: (updates: Partial<ResumeData>) => set((state) => ({
                 resume: { ...state.resume, ...updates, lastModified: new Date().toISOString() }
@@ -223,6 +241,7 @@ export const useResumeStore = create<ResumeState>()(
                 };
             }),
 
+<<<<<<< Updated upstream
             addSkillCategory: () => set((state) => ({
                 resume: {
                     ...state.resume,
@@ -247,6 +266,41 @@ export const useResumeStore = create<ResumeState>()(
                     ...state.resume,
                     skills: state.resume.skills.filter(cat => cat.id !== id)
                 }
+=======
+            requestRecommendation: (details) => set((state) => {
+                const newRequest: RecommendationRequest = {
+                    id: Math.random().toString(36).substr(2, 9),
+                    studentName: state.resume.personalInfo.fullName || 'Student',
+                    studentEmail: state.resume.personalInfo.email || 'student@atsense.ai',
+                    purpose: details.purpose,
+                    company: details.company,
+                    message: details.message,
+                    status: 'Pending',
+                    createdAt: new Date().toISOString(),
+                    isJobReferred: false,
+                    studentProfile: state.resume
+                };
+
+                // Simulation of Step 4: Admin Notification
+                console.log("SIMULATION: Email sent to admin@gmail.com with request:", newRequest);
+
+                return {
+                    recommendationRequests: [...state.recommendationRequests, newRequest]
+                };
+            }),
+
+            updateRecommendationStatus: (id, status, letter) => set((state) => ({
+                recommendationRequests: state.recommendationRequests.map(req =>
+                    req.id === id
+                        ? {
+                            ...req,
+                            status,
+                            letterContent: letter || req.letterContent,
+                            isJobReferred: status === 'Approved'
+                        }
+                        : req
+                )
+>>>>>>> Stashed changes
             })),
         }),
         {

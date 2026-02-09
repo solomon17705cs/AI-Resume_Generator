@@ -21,7 +21,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function LandingPage() {
-  const { githubLinked } = useResumeStore();
+  const { githubLinked, userRole } = useResumeStore();
   const router = useRouter();
   const [isHydrated, setIsHydrated] = useState(false);
 
@@ -30,10 +30,14 @@ export default function LandingPage() {
   }, []);
 
   useEffect(() => {
-    if (isHydrated && githubLinked) {
-      router.push("/dashboard");
+    if (isHydrated) {
+      if (userRole === 'admin') {
+        router.push("/recommendations");
+      } else if (githubLinked || userRole === 'user') {
+        router.push("/dashboard");
+      }
     }
-  }, [isHydrated, githubLinked, router]);
+  }, [isHydrated, githubLinked, userRole, router]);
 
   if (!isHydrated) return null;
 

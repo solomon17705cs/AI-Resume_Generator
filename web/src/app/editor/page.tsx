@@ -181,15 +181,20 @@ export default function EditorPage() {
                         overallScore: afterScore,
                         atsType: analysisRes.data.ats_type,
                         atsProfile: analysisRes.data.ats_profile,
-                        sectionScores: { experience: 85, skills: 80, impact: 95 }, // Simulated upgraded sections
+                        sectionScores: { experience: 85, skills: 80, impact: 95 },
                         keywords: {
                             found: analysisRes.data.found_keywords,
                             missing: analysisRes.data.missing_keywords
                         },
+                        keywordMetadata: analysisRes.data.keyword_metadata,
                         reasoning: analysisRes.data.reasoning,
                         suggestions: analysisRes.data.suggestions.map((s: any, i: number) => ({
                             id: i.toString(),
                             type: s.type || 'info',
+                            title: s.title,
+                            description: s.description,
+                            action: s.action,
+                            examples: s.examples,
                             message: typeof s === 'string' ? s : s.message
                         })),
                         forensics: analysisRes.data.match_forensics

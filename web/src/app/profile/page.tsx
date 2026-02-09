@@ -19,7 +19,8 @@ import {
     ShieldCheck,
     Cpu,
     Calendar,
-    Edit3
+    Edit3,
+    Compass
 } from "lucide-react";
 import Link from "next/link";
 import { useResumeStore } from "@/store/useResumeStore";
@@ -30,7 +31,7 @@ export default function ProfilePage() {
     const router = useRouter();
     const {
         githubLinked, githubUsername, githubAvatar, resume,
-        updatePersonalInfo
+        updatePersonalInfo, userRole
     } = useResumeStore();
 
     const [isHydrated, setIsHydrated] = useState(false);
@@ -41,10 +42,14 @@ export default function ProfilePage() {
 
     // Auth Guard
     useEffect(() => {
-        if (isHydrated && !githubLinked) {
-            router.push("/login");
+        if (isHydrated) {
+            if (!githubLinked && !userRole) {
+                router.push("/login");
+            } else if (userRole === 'admin') {
+                router.push("/recommendations");
+            }
         }
-    }, [isHydrated, githubLinked, router]);
+    }, [isHydrated, githubLinked, userRole, router]);
 
     if (!isHydrated) return null;
 
@@ -66,6 +71,8 @@ export default function ProfilePage() {
                         <SidebarItem href="/dashboard" icon={<LayoutDashboard size={18} />} label="Overview" />
                         <SidebarItem href="/resumes" icon={<FileText size={18} />} label="My Resumes" />
                         <SidebarItem href="/analysis" icon={<Target size={18} />} label="Job Analyzer" />
+                        <SidebarItem href="/jobs" icon={<Compass size={18} />} label="Pathfinder" />
+                        <SidebarItem href="/recommendations" icon={<ShieldCheck size={18} />} label="Recommendations" />
                         <SidebarItem href="/profile" icon={<User size={18} />} label="Profile" active />
                         <div className="h-px bg-white/5 my-4" />
                         <SidebarItem href="#" icon={<Settings size={18} />} label="Settings" />

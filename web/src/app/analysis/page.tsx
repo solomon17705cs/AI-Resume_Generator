@@ -20,7 +20,8 @@ import {
     Wand2,
     Sparkles,
     ArrowRight,
-    BarChart4
+    BarChart4,
+    Compass
 } from "lucide-react";
 import Link from "next/link";
 import { useResumeStore } from "@/store/useResumeStore";
@@ -35,7 +36,7 @@ export default function AnalysisPage() {
     const router = useRouter();
     const {
         githubLinked, analysis, resume, jobDescription, jobUrl,
-        updateResume, setAnalysis
+        updateResume, setAnalysis, userRole
     } = useResumeStore();
 
     const [isFixing, setIsFixing] = useState(false);
@@ -48,10 +49,14 @@ export default function AnalysisPage() {
 
     // Auth Guard
     useEffect(() => {
-        if (isHydrated && !githubLinked) {
-            router.push("/login");
+        if (isHydrated) {
+            if (!githubLinked && !userRole) {
+                router.push("/login");
+            } else if (userRole === 'admin') {
+                router.push("/recommendations");
+            }
         }
-    }, [isHydrated, githubLinked, router]);
+    }, [isHydrated, githubLinked, userRole, router]);
 
     const handleFixAll = async () => {
         if (!jobDescription || !analysis) return;
@@ -88,10 +93,15 @@ export default function AnalysisPage() {
                             found: analysisRes.data.found_keywords,
                             missing: analysisRes.data.missing_keywords
                         },
+                        keywordMetadata: analysisRes.data.keyword_metadata,
                         reasoning: analysisRes.data.reasoning,
                         suggestions: analysisRes.data.suggestions.map((s: any, i: number) => ({
                             id: i.toString(),
                             type: s.type || 'info',
+                            title: s.title,
+                            description: s.description,
+                            action: s.action,
+                            examples: s.examples,
                             message: typeof s === 'string' ? s : s.message
                         })),
                         forensics: analysisRes.data.match_forensics
@@ -127,6 +137,8 @@ export default function AnalysisPage() {
                         <SidebarItem href="/dashboard" icon={<LayoutDashboard size={18} />} label="Overview" />
                         <SidebarItem href="/resumes" icon={<FileText size={18} />} label="My Resumes" />
                         <SidebarItem href="/analysis" icon={<Target size={18} />} label="Job Analyzer" active />
+                        <SidebarItem href="/jobs" icon={<Compass size={18} />} label="Pathfinder" />
+                        <SidebarItem href="/recommendations" icon={<ShieldCheck size={18} />} label="Recommendations" />
                         <SidebarItem href="/profile" icon={<User size={18} />} label="Profile" />
                         <div className="h-px bg-white/5 my-4" />
                         <SidebarItem href="#" icon={<Settings size={18} />} label="Settings" />
@@ -172,9 +184,6 @@ export default function AnalysisPage() {
                             {/* Score Overview */}
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                 <div className="lg:col-span-2 p-10 glass-dark border border-white/5 rounded-[48px] flex flex-col md:flex-row items-center justify-between gap-12 relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 p-8 opacity-[0.03]">
-                                        <Cpu size={200} />
-                                    </div>
                                     <div className="space-y-6 relative z-10 w-full md:w-auto">
                                         <div className="flex flex-wrap gap-3">
                                             <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-widest rounded-full">
@@ -276,12 +285,38 @@ export default function AnalysisPage() {
                                         <AlertCircle className="text-yellow-500" />
                                         Keyword Gaps
                                     </h3>
-                                    <div className="flex flex-wrap gap-3">
-                                        {analysis.keywords.missing.map((word, i) => (
-                                            <span key={i} className="px-4 py-2 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-xs font-bold uppercase tracking-widest">
-                                                {word}
-                                            </span>
-                                        ))}
+
+                                    <div className="space-y-6">
+                                        {analysis.keywordMetadata ? (
+                                            Object.entries(
+                                                analysis.keywordMetadata
+                                                    .filter(kw => analysis.keywords.missing.includes(kw.keyword))
+                                                    .reduce((acc: any, kw) => {
+                                                        if (!acc[kw.category]) acc[kw.category] = [];
+                                                        acc[kw.category].push(kw);
+                                                        return acc;
+                                                    }, {})
+                                            ).map(([category, kws]: any) => (
+                                                <div key={category} className="space-y-3">
+                                                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{category}</h4>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {kws.map((kw: any, i: number) => (
+                                                            <span key={i} title={kw.context} className="px-3 py-1.5 bg-red-500/5 border border-red-500/10 text-red-400 rounded-lg text-[10px] font-bold uppercase tracking-wider cursor-help">
+                                                                {kw.keyword}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="flex flex-wrap gap-3">
+                                                {analysis.keywords.missing.map((word, i) => (
+                                                    <span key={i} className="px-4 py-2 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-xs font-bold uppercase tracking-widest">
+                                                        {word}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                     <p className="text-slate-500 text-sm font-medium italic border-l-2 border-white/5 pl-4">
                                         High-priority skills missing from your current draft.
@@ -293,12 +328,38 @@ export default function AnalysisPage() {
                                         <CheckCircle2 className="text-emerald-500" />
                                         Verified Keywords
                                     </h3>
-                                    <div className="flex flex-wrap gap-3">
-                                        {analysis.keywords.found.map((word, i) => (
-                                            <span key={i} className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs font-bold uppercase tracking-widest">
-                                                {word}
-                                            </span>
-                                        ))}
+
+                                    <div className="space-y-6">
+                                        {analysis.keywordMetadata ? (
+                                            Object.entries(
+                                                analysis.keywordMetadata
+                                                    .filter(kw => analysis.keywords.found.includes(kw.keyword))
+                                                    .reduce((acc: any, kw) => {
+                                                        if (!acc[kw.category]) acc[kw.category] = [];
+                                                        acc[kw.category].push(kw);
+                                                        return acc;
+                                                    }, {})
+                                            ).map(([category, kws]: any) => (
+                                                <div key={category} className="space-y-3">
+                                                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{category}</h4>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {kws.map((kw: any, i: number) => (
+                                                            <span key={i} title={kw.context} className="px-3 py-1.5 bg-emerald-500/5 border border-emerald-500/10 text-emerald-400 rounded-lg text-[10px] font-bold uppercase tracking-wider cursor-help">
+                                                                {kw.keyword}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="flex flex-wrap gap-3">
+                                                {analysis.keywords.found.map((word, i) => (
+                                                    <span key={i} className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs font-bold uppercase tracking-widest">
+                                                        {word}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                     <p className="text-slate-500 text-sm font-medium italic border-l-2 border-white/5 pl-4">
                                         Successfully detected technical signals.

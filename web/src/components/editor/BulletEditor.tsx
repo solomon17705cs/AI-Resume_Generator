@@ -15,6 +15,8 @@ interface BulletEditorProps {
 export const BulletEditor: React.FC<BulletEditorProps> = ({ value, onChange, jobDescription, onRemove }) => {
     const [isOptimizing, setIsOptimizing] = useState(false);
     const [suggestion, setSuggestion] = useState<string | null>(null);
+    const [explanation, setExplanation] = useState<string[]>([]);
+    const [domain, setDomain] = useState<string | null>(null);
 
     const handleOptimize = async () => {
         if (!jobDescription) return;
@@ -25,8 +27,11 @@ export const BulletEditor: React.FC<BulletEditorProps> = ({ value, onChange, job
                 job_description: jobDescription
             });
             setSuggestion(response.data.optimizedSlug);
-        } catch (error) {
-            console.error(error);
+            setExplanation(response.data.explanation || []);
+            setDomain(response.data.domain || null);
+        } catch (error: any) {
+            console.error("Single Bullet Optimization Error:", error);
+            alert(error.response?.data?.error || "Neural Engine is busy. Please try again in a moment.");
         } finally {
             setIsOptimizing(false);
         }
@@ -54,8 +59,8 @@ export const BulletEditor: React.FC<BulletEditorProps> = ({ value, onChange, job
                         onClick={handleOptimize}
                         disabled={isOptimizing || !value || !jobDescription}
                         className={`p-2 rounded-xl transition-all ${isOptimizing
-                                ? 'bg-blue-600/20 text-blue-400 rotate-180 animate-spin'
-                                : 'bg-blue-600 text-white hover:scale-110 shadow-lg shadow-blue-600/20 opacity-0 group-hover/bullet:opacity-100'
+                            ? 'bg-blue-600/20 text-blue-400 rotate-180 animate-spin'
+                            : 'bg-blue-600 text-white hover:scale-110 shadow-lg shadow-blue-600/20 opacity-0 group-hover/bullet:opacity-100'
                             } disabled:opacity-0`}
                     >
                         <Wand2 size={16} />
@@ -72,9 +77,17 @@ export const BulletEditor: React.FC<BulletEditorProps> = ({ value, onChange, job
                         className="bg-blue-600/10 border border-blue-500/20 rounded-2xl p-4 space-y-3"
                     >
                         <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-1">
-                                <Sparkles size={12} /> AI Recommendation
-                            </span>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-1">
+                                    <Sparkles size={12} /> AI Recommendation
+                                </span>
+                                <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[8px] font-black uppercase rounded-md">Verified ATS-Friendly</span>
+                                {domain && (
+                                    <span className="px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[8px] font-black uppercase rounded-md tracking-wider">
+                                        Targeting {domain}
+                                    </span>
+                                )}
+                            </div>
                             <div className="flex gap-2">
                                 <button
                                     onClick={() => setSuggestion(null)}
@@ -86,7 +99,21 @@ export const BulletEditor: React.FC<BulletEditorProps> = ({ value, onChange, job
                                 ><Check size={14} /></button>
                             </div>
                         </div>
-                        <p className="text-xs text-slate-300 leading-relaxed italic">"{suggestion}"</p>
+                        <p className="text-xs text-slate-100 font-medium leading-relaxed italic">"{suggestion}"</p>
+
+                        {explanation.length > 0 && (
+                            <div className="pt-2 border-t border-white/5 space-y-2">
+                                <h5 className="text-[9px] font-black text-blue-400/80 uppercase tracking-widest">Why This Works:</h5>
+                                <ul className="space-y-1.5">
+                                    {explanation.map((point, i) => (
+                                        <li key={i} className="flex items-start gap-2 text-[10px] text-slate-400 leading-tight">
+                                            <div className="w-1 h-1 bg-blue-500 rounded-full mt-1 shrink-0" />
+                                            {point}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>
