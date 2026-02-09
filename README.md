@@ -39,7 +39,7 @@ The backend handles semantic analysis, keyword extraction, and vector matching.
 cd api
 
 # Create a virtual environment
-python -m venv venv
+python3 -m venv venv
 
 # Activate the environment
 source venv/bin/activate  # On Windows: venv\Scripts\activate
@@ -48,10 +48,10 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install fastapi uvicorn spacy keybert sentence-transformers pydantic "urllib3<2"
 
 # Download the required NLP model
-python -m spacy download en_core_web_sm
+python3 -m spacy download en_core_web_sm
 
 # Launch the engine (on port 8001)
-python main.py
+python3 main.py
 ```
 
 ### 2. Web Flagship (Next.js Frontend)
