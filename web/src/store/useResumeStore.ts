@@ -24,6 +24,8 @@ interface ResumeState {
     updateExperience: (id: string, updates: Partial<ResumeData['experience'][0]>) => void;
     addExperience: () => void;
     removeExperience: (id: string) => void;
+    removeProject: (id: string) => void;
+    removeEducation: (id: string) => void;
 
     // GitHub Integration
     githubLinked: boolean;
@@ -169,6 +171,20 @@ export const useResumeStore = create<ResumeState>()(
                 resume: {
                     ...state.resume,
                     experience: state.resume.experience.filter(exp => exp.id !== id)
+                }
+            })),
+
+            removeProject: (id: string) => set((state) => ({
+                resume: {
+                    ...state.resume,
+                    projects: state.resume.projects.filter(proj => proj.id !== id)
+                }
+            })),
+
+            removeEducation: (id: string) => set((state) => ({
+                resume: {
+                    ...state.resume,
+                    education: state.resume.education.filter(edu => edu.id !== id)
                 }
             })),
 

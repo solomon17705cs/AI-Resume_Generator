@@ -28,7 +28,8 @@ import {
     Check,
     Github,
     Layers,
-    ChevronDown
+    ChevronDown,
+    Trash2
 } from "lucide-react";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
@@ -43,7 +44,7 @@ export default function EditorPage() {
     const router = useRouter();
     const {
         resume, analysis, setAnalysis, updatePersonalInfo,
-        updateExperience, addExperience, removeExperience, updateResume,
+        updateExperience, addExperience, removeExperience, removeProject, removeEducation, updateResume,
         githubLinked, jobDescription, jobUrl, setJobContext,
         syncLanguagesFromGitHub, addSkillCategory, updateSkillCategoryName,
         removeSkillCategory
@@ -656,6 +657,13 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                                     <div className="space-y-10">
                                         {resume.experience.map((exp) => (
                                             <div key={exp.id} className="glass-dark border border-white/5 rounded-[32px] p-8 space-y-6 relative group">
+                                                <button
+                                                    onClick={() => removeExperience(exp.id)}
+                                                    className="absolute top-6 right-6 p-2 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                                                    title="Remove Experience"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
                                                 <div className="grid grid-cols-2 gap-6">
                                                     <InputField label="Organization" value={exp.company} onChange={(v: string) => updateExperience(exp.id, { company: v })} />
                                                     <InputField label="Role Title" value={exp.role} onChange={(v: string) => updateExperience(exp.id, { role: v })} />
@@ -702,7 +710,14 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                                     <ImpactHint />
                                     <div className="space-y-10">
                                         {resume.projects.map((proj) => (
-                                            <div key={proj.id} className="glass-dark border border-white/5 rounded-[32px] p-8 space-y-6">
+                                            <div key={proj.id} className="glass-dark border border-white/5 rounded-[32px] p-8 space-y-6 relative group">
+                                                <button
+                                                    onClick={() => removeProject(proj.id)}
+                                                    className="absolute top-6 right-6 p-2 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                                                    title="Remove Project"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
                                                 <div className="grid grid-cols-2 gap-6">
                                                     <InputField label="Project Name" value={proj.name} onChange={(v: string) => {
                                                         const updated = resume.projects.map(p => p.id === proj.id ? { ...p, name: v } : p);
@@ -838,7 +853,14 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                                 <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4">
                                     <SectionHeader title="Academic Foundation" />
                                     {resume.education.map((edu) => (
-                                        <div key={edu.id} className="glass-dark border border-white/5 rounded-[32px] p-8 grid grid-cols-2 gap-6">
+                                        <div key={edu.id} className="glass-dark border border-white/5 rounded-[32px] p-8 grid grid-cols-2 gap-6 relative group">
+                                            <button
+                                                onClick={() => removeEducation(edu.id)}
+                                                className="absolute top-6 right-6 p-2 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                                                title="Remove Education"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
                                             <InputField label="Institution" value={edu.institution} onChange={(v: string) => {
                                                 const updated = resume.education.map(e => e.id === edu.id ? { ...e, institution: v } : e);
                                                 updateResume({ education: updated });
