@@ -23,7 +23,7 @@ export const Preview: React.FC<PreviewProps> = ({ data, scale = 1 }) => {
             }}
             id="resume-content-to-export"
         >
-            <div className="p-12 h-full space-y-8">
+            <div className="p-12 space-y-8">
                 {/* Modern Header */}
                 <header className="text-center space-y-3">
                     <h1 className="text-4xl font-extrabold uppercase tracking-tighter text-slate-950">

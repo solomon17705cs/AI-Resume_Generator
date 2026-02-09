@@ -92,6 +92,10 @@ export interface ATSAnalysis {
         semantic_overlap: number;
         keyword_density: number;
         structural_integrity: number;
+        keyword_match?: number;
+        semantic_relevance?: number;
+        section_compliance?: number;
+        clarity_recency?: number;
     };
 }
 export interface RecommendationRequest {

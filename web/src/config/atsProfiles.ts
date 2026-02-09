@@ -17,18 +17,18 @@ export const ATS_PROFILES: Record<string, ATSProfile> = {
         id: 'workday',
         name: 'Workday',
         weights: {
-            keywords: 0.50,
-            semantic: 0.20,
-            structure: 0.20,
+            keywords: 0.50, // Workday is notoriously keyword-heavy
+            semantic: 0.15,
+            structure: 0.25,
             formatting: 0.10
         },
         detectionPatterns: ['workday.com', 'myworkdayjobs.com'],
-        description: 'Traditional, keyword-heavy system. Favors strict section headers and explicit skill mentions.',
+        description: 'Legacy, high-volume system. Extremely picky with section headers and keyword placement.',
         rules: [
-            'Use standard headings (Experience, Education, Skills)',
-            'Avoid multi-column layouts',
-            'Maximize keyword density for top 10 JD skills',
-            'No tables or complex graphics'
+            'Use standard headings (PROFESSIONAL EXPERIENCE, EDUCATION, SKILLS)',
+            'Absolute zero tolerance for tables or text boxes',
+            'High keyword density required in the Summary and most recent role',
+            'Prioritize exact phrase matches from the Job Description'
         ]
     },
     greenhouse: {
@@ -36,16 +36,16 @@ export const ATS_PROFILES: Record<string, ATSProfile> = {
         name: 'Greenhouse',
         weights: {
             keywords: 0.35,
-            semantic: 0.40,
-            structure: 0.15,
+            semantic: 0.35, // More modern, better at synonyms
+            structure: 0.20,
             formatting: 0.10
         },
         detectionPatterns: ['greenhouse.io', 'boards.greenhouse.io'],
-        description: 'Modern, balanced system. Better at semantic understanding but still relies on structured experience data.',
+        description: 'Modern, balanced system. Values impact-oriented bullets and semantic relevance.',
         rules: [
-            'Focus on impact-driven metrics (XYZ formula)',
-            'Clean, readable typography',
-            'Semantic relevance is more important than raw density'
+            'Use action-oriented Bullets (XYZ formula is highly effective)',
+            'Semantic keywords are valued as much as exact matches',
+            'Prefers clear, modern typography and hierarchy'
         ]
     },
     lever: {
@@ -53,16 +53,16 @@ export const ATS_PROFILES: Record<string, ATSProfile> = {
         name: 'Lever',
         weights: {
             keywords: 0.30,
-            semantic: 0.45,
-            structure: 0.15,
+            semantic: 0.40,
+            structure: 0.20,
             formatting: 0.10
         },
         detectionPatterns: ['lever.co', 'jobs.lever.co'],
-        description: 'Next-gen ATS with high semantic focus. Values clarity and direct alignment with role responsibilities.',
+        description: 'Next-gen platform focused on developer talent. High semantic focus.',
         rules: [
-            'Avoid filler words',
-            'Direct alignment with "Must Have" skills',
-            'Simple formatting works best for their parser'
+            'Clarity and brevity are prioritized',
+            'Direct alignment with "Must Have" technical stack',
+            'Values Project sections for technical roles'
         ]
     },
     generic: {
@@ -75,10 +75,10 @@ export const ATS_PROFILES: Record<string, ATSProfile> = {
             formatting: 0.10
         },
         detectionPatterns: [],
-        description: 'Standard parsing logic used by smaller platforms. Balanced approach.',
+        description: 'Standard parsing logic. Balanced approach for general applications.',
         rules: [
-            'Standard PDF structure',
-            'Keyword-balanced content'
+            'Standard ATS-Safe structure (single column)',
+            'Balanced keyword distribution across all sections'
         ]
     }
 };

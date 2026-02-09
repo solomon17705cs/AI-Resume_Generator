@@ -37,29 +37,60 @@ export const analyzeKeywordDensity = (resumeText: string, jobDescription: string
         totalWords: totalResumeWords,
         missingCritical,
         extractedMetadata: extracted,
-        recommendations: generateRecommendations(density, missingCritical)
+        recommendations: generateRecommendations(density, missingCritical, totalResumeWords)
     };
 };
 
-function generateRecommendations(density: number, missingCritical: string[]) {
+function generateRecommendations(density: number, missingCritical: string[], totalWords: number) {
     const recommendations = [];
 
+    // Density Optimization (Target: 2-5%)
     if (density < 2) {
         recommendations.push({
             type: "CRITICAL",
+            id: "density-low",
             title: "Low Keyword Density",
-            description: "Your resume lacks essential keywords from the job description. ATS filters often discard low-density resumes.",
-            action: "Incorporate these missing technical terms naturally into your bullet points.",
+            description: `Your keyword density is ${density.toFixed(1)}%. ATS algorithms typically favor a 2-5% range for relevance.`,
+            action: "Incorporate more technical terms from the Job Description into your bullets naturally.",
             examples: missingCritical.slice(0, 3).map(kw => ({
                 before: "Handled project development",
                 after: `Led ${kw} implementation and maintenance, increasing efficiency by 15%`
             }))
         });
+    } else if (density > 5) {
+        recommendations.push({
+            type: "WARNING",
+            id: "density-high",
+            title: "Keyword Stuffing Risk",
+            description: `Your density is ${density.toFixed(1)}%, which exceeds the 5% optimization ceiling. This may be flagged as stuffing.`,
+            action: "Reduce repetitive terminology and focus on narrative flow with metrics.",
+            examples: [{
+                before: "Expert in Java, Java developer, Java coding",
+                after: "Senior Java Developer with 5 years of experience in enterprise systems"
+            }]
+        });
     }
 
+    // Length Optimization
+    if (totalWords > 800) {
+        recommendations.push({
+            type: "WARNING",
+            id: "length-long",
+            title: "Resume Length Alert",
+            description: `Your resume is approximately ${totalWords} words. Most modern ATS environments prefer 1-2 pages (400-700 words).`,
+            action: "Compress your executive summary to 3-4 lines and prune older experience bullets.",
+            examples: [{
+                before: "Detailed description of responsibilities from 10 years ago...",
+                after: "Focus on high-level achievements and recent impact."
+            }]
+        });
+    }
+
+    // Missing Strategic Keywords
     if (missingCritical.length > 0) {
         recommendations.push({
             type: "WARNING",
+            id: "missing-keys",
             title: "Missing Strategic Keywords",
             description: "Some high-relevance terms found in the job description are missing from your profile.",
             action: "Add these specific skills to your Skills section or Experience bullets:",
@@ -67,19 +98,6 @@ function generateRecommendations(density: number, missingCritical: string[]) {
                 before: "Skilled in various technologies",
                 after: `Expertise in ${kw} and modular system design`
             }))
-        });
-    }
-
-    if (density > 5) {
-        recommendations.push({
-            type: "WARNING",
-            title: "Keyword Stuffing Risk",
-            description: "Your keyword density is unusually high, which might be flagged as 'stuffing' by modern parsers.",
-            action: "Try to make the content more natural by reducing repetitive phrasing.",
-            examples: [{
-                before: "Expert in Java, Java developer, Java coding",
-                after: "Senior Java Developer with 5 years of experience in enterprise systems"
-            }]
         });
     }
 

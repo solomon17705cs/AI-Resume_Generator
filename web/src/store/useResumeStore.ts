@@ -1,10 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-<<<<<<< Updated upstream
-import { ResumeData, ATSAnalysis, Experience, Project } from '@/types/resume';
-=======
-import { ResumeData, ATSAnalysis, RecommendationRequest } from '@/types/resume';
->>>>>>> Stashed changes
+import { ResumeData, ATSAnalysis, RecommendationRequest, Experience, Project } from '@/types/resume';
 
 interface ResumeState {
     resume: ResumeData;
@@ -37,16 +33,13 @@ interface ResumeState {
     setGitHubStatus: (status: { linked: boolean; username: string; avatar?: string }) => void;
     setGitHubRepos: (repos: any[]) => void;
     syncLanguagesFromGitHub: () => void;
-<<<<<<< Updated upstream
     addSkillCategory: () => void;
     updateSkillCategoryName: (id: string, newName: string) => void;
     removeSkillCategory: (id: string) => void;
-=======
 
     // Recommendation Flow
     requestRecommendation: (details: Pick<RecommendationRequest, 'purpose' | 'company' | 'message'>) => void;
     updateRecommendationStatus: (id: string, status: 'Approved' | 'Rejected', letter?: string) => void;
->>>>>>> Stashed changes
 }
 
 const DEFAULT_RESUME: ResumeData = {
@@ -241,8 +234,7 @@ export const useResumeStore = create<ResumeState>()(
                 };
             }),
 
-<<<<<<< Updated upstream
-            addSkillCategory: () => set((state) => ({
+            addSkillCategory: () => set((state: any) => ({
                 resume: {
                     ...state.resume,
                     skills: [
@@ -252,22 +244,23 @@ export const useResumeStore = create<ResumeState>()(
                 }
             })),
 
-            updateSkillCategoryName: (id: string, newName: string) => set((state) => ({
+            updateSkillCategoryName: (id: string, newName: string) => set((state: any) => ({
                 resume: {
                     ...state.resume,
-                    skills: state.resume.skills.map(cat =>
+                    skills: state.resume.skills.map((cat: any) =>
                         cat.id === id ? { ...cat, name: newName } : cat
                     )
                 }
             })),
 
-            removeSkillCategory: (id: string) => set((state) => ({
+            removeSkillCategory: (id: string) => set((state: any) => ({
                 resume: {
                     ...state.resume,
-                    skills: state.resume.skills.filter(cat => cat.id !== id)
+                    skills: state.resume.skills.filter((cat: any) => cat.id !== id)
                 }
-=======
-            requestRecommendation: (details) => set((state) => {
+            })),
+
+            requestRecommendation: (details: any) => set((state: any) => {
                 const newRequest: RecommendationRequest = {
                     id: Math.random().toString(36).substr(2, 9),
                     studentName: state.resume.personalInfo.fullName || 'Student',
@@ -289,8 +282,8 @@ export const useResumeStore = create<ResumeState>()(
                 };
             }),
 
-            updateRecommendationStatus: (id, status, letter) => set((state) => ({
-                recommendationRequests: state.recommendationRequests.map(req =>
+            updateRecommendationStatus: (id: string, status: any, letter?: string) => set((state: any) => ({
+                recommendationRequests: state.recommendationRequests.map((req: any) =>
                     req.id === id
                         ? {
                             ...req,
@@ -300,7 +293,6 @@ export const useResumeStore = create<ResumeState>()(
                         }
                         : req
                 )
->>>>>>> Stashed changes
             })),
         }),
         {

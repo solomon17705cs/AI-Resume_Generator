@@ -12,32 +12,36 @@ export async function POST(req: NextRequest) {
         }
 
         const prompt = `
-            You are an elite ATS (Applicant Tracking System) Specialist and Executive Career Coach.
-            TASK: Transform the raw bullet point into a high-impact, DOMAIN-SPECIFIC industry statement that is HIGHLY READABLE.
+            You are a Neural Precision & Brevity Optimizer powered by Llama-3.3-70B.
+            Your task is to transform a raw bullet point into an ultra-concise, metric-heavy, and high-impact industry statement.
 
-            STRICT READABILITY & BREVITY RULES:
-            1. LENGTH: Max 45 words or 2 lines. 1.5 lines is the "Goldilocks" zone.
-            2. CONTEXT COMPRESSION: Absolutely remove fluff. 
-               - Replace "by designing and implementing" with "through".
-               - Replace "utilizing strong computer science fundamentals" with "using".
+            [STRICT READABILITY & BREVITY RULES]
+            1. LENGTH: Max 25 words or 1.5 lines.
+            2. CONTEXT COMPRESSION (MANDATORY):
+               - Replace "designing and developing" with "developing".
+               - Replace "leveraging expertise in" with "using".
+               - Replace "experienced in" with "engineered" or "delivered".
                - Replace "in order to ensure" with "to".
-            3. NO KEYWORD DILUTION: Keep the focus on 1 main achievement + 1-2 primary tech stack items.
+               - Remove all fluff like "highly skilled", "dedicated", "proficient".
 
-            CRITICAL DOMAIN RULES:
-            1. INDUSTRY INTELLIGENCE: Identify industry (FinTech, EdTech, etc) and use specialized terms (e.g., "order matching engines" for FinTech).
-            2. PROJECT SCALE: Infer and add scale indicators (e.g., "serving 500k+ users", "handling $10M+ daily transactions").
-            3. METRIC CONTEXT: Every percentage MUST include a "from X to Y" context.
-            4. FORMAT: Strictly follow the XYZ Formula (Accomplished [X] as measured by [Y], by doing [Z]).
+            [QUANTIFIABLE IMPACT]
+            - MANDATORY: Include at least one metric (%, $, time, or scale).
+            - Format: Accomplished [X] as measured by [Y], by doing [Z].
+
+            [INDUSTRY CONTEXT]
+            - Identify the domain from the JD (e.g., Defense, FinTech, EdTech).
+            - For Defense: Use terms like "UUVs", "NDT", "Naval Applications", "Strategic Infrastructure".
+            - For FinTech: Use terms like "Latency", "Order Matching", "Transactions".
 
             CONTEXT:
-            Target Job Description (JD): "${job_description.substring(0, 1500)}"
+            Target JD: "${job_description.substring(0, 1500)}"
             Candidate's Raw Bullet: "${bullet}"
 
             OUTPUT FORMAT:
             Return ONLY a JSON object:
             {
-              "optimizedSlug": "The rewritten bullet point (MAX 45 WORDS)",
-              "explanation": ["Point 1 about metric context", "Point 2 about domain terms", "Point 3 about Readability & Brevity optimization"],
+              "optimizedSlug": "The rewritten bullet point (MAX 25 WORDS)",
+              "explanation": ["Point about metric inclusion", "Point about context compression applied", "Point about domain terms used"],
               "detectedDomain": "The identified industry"
             }
         `;
@@ -46,7 +50,7 @@ export async function POST(req: NextRequest) {
             model: 'meta-llama/llama-3.3-70b-instruct',
             messages: [{ role: 'user', content: prompt }],
             response_format: { type: 'json_object' },
-            temperature: 0.3
+            temperature: 0.2
         }, {
             headers: {
                 'Authorization': `Bearer ${API_KEY}`,

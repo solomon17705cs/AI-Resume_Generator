@@ -243,12 +243,16 @@ export default function AnalysisPage() {
                                 </div>
 
                                 <div className="p-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[48px] text-white space-y-6">
-                                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60 text-center">Quick Forensics</h4>
+                                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60 text-center">Hybrid Match Breakdown</h4>
                                     <div className="space-y-5">
-                                        <ForensicStat label="Keyword Density" value={analysis.forensics?.keyword_density || 0} />
-                                        <ForensicStat label="Semantic Overlap" value={analysis.forensics?.semantic_overlap || 0} />
-                                        <ForensicStat label="Structural Integrity" value={analysis.forensics?.structural_integrity || 0} />
+                                        <ForensicStat label="Keyword Match (40%)" value={analysis.forensics?.keyword_match || 0} />
+                                        <ForensicStat label="Section Compliance (30%)" value={analysis.forensics?.section_compliance || 0} />
+                                        <ForensicStat label="Semantic Relevance (20%)" value={analysis.forensics?.semantic_relevance || 0} />
+                                        <ForensicStat label="Clarity & Recency (10%)" value={analysis.forensics?.clarity_recency || 0} />
                                     </div>
+                                    <p className="text-[9px] font-medium opacity-70 text-center leading-relaxed mt-4">
+                                        Your score is calculated using our Multi-Layer Hybrid Algorithm, simulating modern ATS ranking logic.
+                                    </p>
                                 </div>
                             </div>
 

@@ -629,11 +629,10 @@ export default function EditorPage() {
                     </div>
                     <div className="flex-1 overflow-auto p-12 bg-[#020617] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] flex justify-center custom-scrollbar">
                         <div
-                            className="drop-shadow-[0_40px_80px_rgba(0,0,0,0.9)] h-fit mb-40 rounded-lg overflow-hidden border border-white/5 bg-white transition-all duration-200"
+                            className="drop-shadow-[0_40px_80px_rgba(0,0,0,0.9)] mb-40 rounded-lg border border-white/5 bg-white transition-all duration-200"
                             style={{
                                 width: '210mm',
                                 minWidth: '210mm',
-                                height: '297mm',
                                 minHeight: '297mm',
                                 transform: `scale(${previewScale})`,
                                 transformOrigin: 'top center'
@@ -687,10 +686,10 @@ export default function EditorPage() {
                                 animate={{ scale: 1, opacity: 1 }}
                                 exit={{ scale: 0.95, opacity: 0 }}
                                 transition={{ duration: 0.2 }}
-                                className="drop-shadow-[0_40px_120px_rgba(0,0,0,0.9)] rounded-lg overflow-hidden border border-white/10 bg-white"
+                                className="drop-shadow-[0_40px_120px_rgba(0,0,0,0.9)] rounded-lg border border-white/10 bg-white"
                                 style={{
                                     width: '210mm',
-                                    height: '297mm',
+                                    minHeight: '297mm',
                                     transform: `scale(${previewScale})`,
                                     transformOrigin: 'center center'
                                 }}

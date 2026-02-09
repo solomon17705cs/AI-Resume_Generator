@@ -5,8 +5,9 @@ from keybert import KeyBERT
 from sentence_transformers import SentenceTransformer, util
 import uvicorn
 import os
+import re
 
-app = FastAPI(title="ATSense Intelligence Engine V2")
+app = FastAPI(title="ATSense Hybrid Intelligence Engine")
 
 # Advanced Models Cluster
 kw_model = None
@@ -16,7 +17,6 @@ def get_models():
     global kw_model, sim_model
     if kw_model is None:
         try:
-            # Using standard models for robustness
             kw_model = KeyBERT()
             sim_model = SentenceTransformer('all-MiniLM-L6-v2')
         except Exception as e:
@@ -33,66 +33,132 @@ class AnalysisResponse(BaseModel):
     found_keywords: List[str]
     missing_keywords: List[str]
     reasoning: str
-    suggestions: List[str]
+    suggestions: List[Dict]
     match_forensics: Dict[str, float]
+
+def clean_keywords(keywords: List[str], text: str) -> List[str]:
+    """
+    Remove branding, company names, and broken phrases.
+    Ensures semantic keywords are professional noun phrases.
+    """
+    cleaned = []
+    
+    # Generic noise words and branding-likely terms
+    blacklist = {
+        'planys', 'actively', 'hiring', 'globally', 'integrates', 'deep', 'brief', 
+        'opportunity', 'join', 'company', 'mission', 'vision', 'located', 'office',
+        'remote', 'hybrid', 'benefits', 'salary', 'competitive', 'equal', 'employer',
+        'professional', 'passionate', 'dedicated', 'experienced', 'successfully'
+    }
+
+    # Common verbs/adjectives that often start 'broken' semantic phrases
+    broken_starts = {
+        'development', 'builds', 'applications', 'working', 'using', 'leveraging', 
+        'handling', 'managing', 'providing', 'excellent', 'strong', 'brief'
+    }
+
+    for kw in keywords:
+        kw_clean = kw.lower().strip()
+        words = kw_clean.split()
+        
+        # 1. Check against blacklist (remove if any word is in blacklist)
+        if any(word in blacklist for word in words):
+            continue
+            
+        # 2. Remove very short keywords or digits
+        if len(kw_clean) < 3 or kw_clean.isdigit():
+            continue
+            
+        # 3. Check for broken n-grams (Starts/Ends with Stop Words)
+        stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'for', 'with', 'by', 'of', 'at', 'to', 'from', 'in', 'on', 'if', 'is', 'are', 'was', 'were'}
+        if words[0] in stop_words or words[-1] in stop_words:
+            continue
+            
+        # 4. Filter out phrases that start with a generic action but don't have enough nouns
+        # (e.g., 'development unmanned' -> bad, 'unmanned development' -> slightly better but still weak)
+        if words[0] in broken_starts and len(words) < 3:
+            continue
+
+        cleaned.append(kw)
+    
+    return cleaned[:15]
 
 @app.post("/analyze", response_model=AnalysisResponse)
 async def analyze(request: AnalysisRequest):
     kw_l, sim_l = get_models()
     
-    # Load profile weights (defaulting to generic)
     profile = request.ats_profile or {
         "weights": {"keywords": 0.40, "semantic": 0.30, "structure": 0.20, "formatting": 0.10}
     }
     weights = profile["weights"]
     
-    # 1. Advanced Keyword Profiling (Using KeyBERT for better extraction)
-    jd_keywords = kw_l.extract_keywords(request.job_description, keyphrase_ngram_range=(1, 2), top_n=15)
-    jd_kw_set = {kw[0].lower() for kw in jd_keywords}
+    # 1. Hybrid Keyword Match (40% Weight)
+    # Using 1-3 ngrams for richer phrases, cleaning for quality
+    jd_keywords_raw = kw_l.extract_keywords(request.job_description, keyphrase_ngram_range=(1, 3), stop_words='english', top_n=50)
+    jd_keywords = clean_keywords([kw[0] for kw in jd_keywords_raw], request.job_description)
+    jd_kw_set = {kw.lower() for kw in jd_keywords}
     
     resume_text_lower = request.resume_text.lower()
     found = [kw for kw in jd_kw_set if kw in resume_text_lower]
     missing = [kw for kw in jd_kw_set if kw not in resume_text_lower]
+    
+    words = re.findall(r'\w+', resume_text_lower)
+    total_words = len(words)
+    kw_count = sum(resume_text_lower.count(kw) for kw in found)
+    density = (kw_count / total_words * 100) if total_words > 0 else 0
+    
+    if 2 <= density <= 5:
+        kw_match_score = 1.0
+    else:
+        kw_match_score = max(0.4, 1.0 - abs(density - 3.5) / 10)
 
-    # 2. Semantic Logic & Vector Alignment
+    # 2. Semantic Relevance (30% Weight)
     embeddings = sim_l.encode([request.resume_text, request.job_description])
     semantic_sim = float(util.cos_sim(embeddings[0], embeddings[1])[0][0])
     
-    # 3. Match Forensics (ATS Profile specific weighting)
-    kw_score = (len(found) / len(jd_kw_set)) if jd_kw_set else 1.0
+    # 3. Section Compliance & Brevity (20% Weight)
+    standard_headers = ["experience", "education", "skills", "summary", "projects"]
+    headers_found = [h for h in standard_headers if h in resume_text_lower]
+    header_score = len(headers_found) / len(standard_headers)
     
-    # Simulated structural score (usually based on section presence and formatting)
-    # Deep dive: more complex in production, but here we simulate based on "rules" matching
-    structural_score = 0.85 
+    brevity_score = 1.0
+    if total_words > 1000:
+        brevity_score = 0.7
+    elif total_words > 800:
+        brevity_score = 0.85
+
+    structural_score = (header_score * 0.7) + (brevity_score * 0.3)
     
-    # Calculate weighted score (Capped at 100)
+    # 4. Clarity & Impact (10% Weight)
+    clarity_score = 0.90 
+    
     raw_score = (
-        (kw_score * weights["keywords"]) + 
+        (kw_match_score * weights["keywords"]) + 
         (semantic_sim * weights["semantic"]) +
         (structural_score * weights["structure"]) +
-        (0.90 * weights["formatting"])
+        (clarity_score * weights["formatting"])
     ) * 100
+    
     final_score = min(raw_score, 100.0)
     
-    # 4. Professional Reasoning Engine (ATS Contextualized)
     ats_name = profile.get("name", "Generic ATS")
     reasoning = (
         f"Detected {ats_name} configuration. "
-        f"Structural alignment: {round(semantic_sim*100)}% with JD mission core. "
-        f"Keyword density is optimized for {ats_name}'s ranking algorithms."
+        f"Keyword density is {round(density, 1)}% (Target: 2-5%). "
+        f"The system alignment shows {round(semantic_sim*100)}% mission core overlap."
     )
     
     suggestions = []
-    if len(missing) > 3:
-        suggestions.append(f"ATS ALERT: Add specific mentions of {missing[0]} and {missing[1]} to pass {ats_name} filters.")
-    
-    if ats_name == "Workday" and len(request.resume_text) > 5000:
-        suggestions.append("WORKDAY ADVICE: Your resume length may trigger truncation in some older Workday parsers. Aim for brevity.")
-    
-    if semantic_sim < 0.6:
-        suggestions.append(f"SEMANTIC ADVICE: Your bullets lack technical intensity for {ats_name}'s semantic layer.")
-    else:
-        suggestions.append("PRO TIP: Semantic overlap is high. Excellent for modern systems like Greenhouse/Lever.")
+    if density < 2:
+        suggestions.append({"type": "critical", "message": f"LOW DENSITY: Your keyword density is low ({round(density, 1)}%). Naturaly integrate terms like '{missing[0]}' if applicable." if missing else "LOW DENSITY: Add more skill-based phrases."})
+    elif density > 5:
+        suggestions.append({"type": "warning", "message": f"STUFFING ALERT: Keyword density is {round(density, 1)}%. Ensure your content remains readable for human reviewers."})
+
+    if total_words > 800:
+        suggestions.append({"type": "warning", "message": f"LENGTH ALERT: Your resume is ~{total_words} words. Aim for under 800 words for maximum impact."})
+
+    if structural_score < 0.8:
+        suggestions.append({"type": "critical", "message": "STRUCTURE ALERT: Use standard section headers like 'PROFESSIONAL EXPERIENCE' to improve ATS parsing."})
 
     return AnalysisResponse(
         score=round(float(final_score), 2),
@@ -101,9 +167,10 @@ async def analyze(request: AnalysisRequest):
         reasoning=reasoning,
         suggestions=suggestions,
         match_forensics={
-            "semantic_overlap": round(min(semantic_sim * 100, 100.0), 2),
-            "keyword_density": round(min(kw_score * 100, 100.0), 2),
-            "structural_integrity": round(min(structural_score * 100, 100.0), 2)
+            "keyword_match": round(min(kw_match_score * 100, 100.0), 2),
+            "semantic_relevance": round(min(semantic_sim * 100, 100.0), 2),
+            "section_compliance": round(min(structural_score * 100, 100.0), 2),
+            "clarity_recency": round(min(clarity_score * 100, 100.0), 2)
         }
     )
 

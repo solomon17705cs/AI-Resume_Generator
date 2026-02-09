@@ -34,10 +34,15 @@ export async function POST(req: NextRequest) {
                     
                     TASK: Analyze the alignment between this resume and the job description.
                     
+                    [STRICT SEMANTIC RULES]
+                    1. NO BRANDING: Remove all company names (e.g., "Planys"), locations, and marketing fluff from keyword lists.
+                    2. QUALITY PHRASES: Focus on Skill, System, or Responsibility-based noun phrases (e.g., "unmanned systems" NOT "planys integrates").
+                    3. CLEANLINESS: Discard broken or non-professional word salad (e.g., "brief planys").
+
                     CONTEXT:
                     - ATS System: ${atsProfile.name}
                     - Statistical Match Score: ${pyResponse.data.score}%
-                    - Missing Keywords: ${kwAnalysis.missingCritical.join(', ')}
+                    - Detected Keywords: ${pyResponse.data.found_keywords.join(', ')}
                     - Current Keyword Density: ${kwAnalysis.density.toFixed(2)}%
                     
                     JOB DESCRIPTION:
@@ -48,7 +53,7 @@ export async function POST(req: NextRequest) {
                     
                     OUTPUT REQUIREMENTS (JSON):
                     1. "reasoning": Provide a 2-sentence strategic insight. Explain WHY the current match score is what it is.
-                    2. "additionalSuggestions": Provide 2 more expert suggestions not already covered by basic keyword matching. Each MUST have "type" (critical, warning, info) and "message".
+                    2. "additionalSuggestions": Provide 2 more expert suggestions. MUST have "type" (critical, warning, info) and "message". Focus on domain-specific systems (e.g., "Autonomous Systems", "Signal Processing").
                     
                     Return ONLY a valid JSON object.
                 `;

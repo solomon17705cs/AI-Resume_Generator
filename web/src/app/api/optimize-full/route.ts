@@ -3,12 +3,15 @@ import axios from 'axios';
 import { detectATS } from '@/config/atsProfiles';
 import { analyzeKeywordDensity } from '@/utils/keywordAnalyzer';
 
-// Check for both LLAMA_API_KEY and OPENROUTER_API_KEY
 const API_KEY = process.env.LLAMA_API_KEY || process.env.OPENROUTER_API_KEY;
 
 export async function POST(req: NextRequest) {
     try {
         const { resume, jobDescription, jobUrl } = await req.json();
+
+        if (!resume || !jobDescription) {
+            return NextResponse.json({ error: 'Missing resume or job description' }, { status: 400 });
+        }
 
         if (!API_KEY || API_KEY === 'your_key_here') {
             return NextResponse.json({
@@ -17,67 +20,78 @@ export async function POST(req: NextRequest) {
             }, { status: 500 });
         }
 
+        console.log("Neural Core heartbeat: Input validated, starting optimization...");
+
         const atsProfile = detectATS(jobUrl || jobDescription);
         const kwAnalysis = analyzeKeywordDensity(JSON.stringify(resume), jobDescription);
 
         const prompt = `
-            You are an elite ATS (Applicant Tracking System) Optimization Engine. 
-            Your goal is to transform the provided resume into a job-specific, high-ranking document for the target platform.
-            
-            ATS Platform: ${atsProfile.name}
-            Platform Rules:
-            ${atsProfile.rules.map(r => `- ${r}`).join('\n')}
+            You are an elite ATS Optimization Engine powered by Llama-3.3-70B.
+            Your task is to transform a Resume JSON into a high-scoring, ultra-concise, and metric-driven document.
 
-            CRITICAL DEFICIENCY DETECTED:
-            The following high-priority keywords are missing or have 0% density:
-            ${kwAnalysis.missingCritical.join(', ')}
-            
-            Target Job Description (JD):
-            "${jobDescription}"
-            
-            Current Resume Data (JSON):
-            ${JSON.stringify(resume, null, 2)}
-            
-            TASK: 
-            Perform a professional, strategic optimization strictly according to these rules:
+            [STRICT BREVITY & READABILITY RULES]
+            1. EXECUTIVE SUMMARY: MUST be between 30-50 words (max 3-4 lines). Absolutely no fluff.
+            2. BULLET POINTS: EVERY bullet point MUST be 1-2 lines (max 25 words).
+            3. CONTEXT COMPRESSION:
+               - Replace "experienced in designing and developing" with "developed".
+               - Replace "leveraging expertise in" with "using" or "via".
+               - Replace "in order to ensure" with "to".
+               - Remove "Highly skilled", "Successful professional", and other generic adjectives.
 
-            1. KEYWORD DENSITY ARCHITECTURE (Priority #1):
-               - ✅ INTEGRATE all detected missing keywords: ${kwAnalysis.missingCritical.join(', ')}.
-               - ✅ Embed keywords naturally into "Action + Impact" bullets using the XYZ formula (Accomplished [X] as measured by [Y], by doing [Z]).
-               - ✅ Target 80-95% JD keyword coverage. DO NOT aim for 100%.
+            [QUANTIFIABLE IMPACT MANDATE]
+            - EVERY optimization MUST include a metric (%, $, time, or scale). 
+            - If no metric is provided, INFER a realistic one based on context (e.g., "reduced latency by 20%", "scaled to 50k users").
 
-            2. HEADER & EDUCATION:
-               - ❌ DO NOT change name, contact info, or degree facts.
+            [SYSTEM ARCHITECTURE]
+            1. Role Synthesis: Identify target role, seniority, and top 5 "must-have" skills from the JD.
+            2. ATS Simulation: Emulate the ranking logic of ${atsProfile.name}.
+            3. Context Compression: Remove fluff; replace passive voice with extreme "Action + Impact" verbs.
+            4. Branding Scrub (CRITICAL): Absolutely remove company names (e.g., "Planys"), locations, and word-salad phrases.
 
-            3. PROFESSIONAL SUMMARY:
-               - ✅ GENERATE a powerful 2-3 sentence summary including the target role title and 3-5 high-priority JD keywords.
+            [PLATFORM CONFIGURATION: ${atsProfile.name}]
+            Rules:
+            ${(atsProfile.rules || []).map(r => `- ${r}`).join('\n')}
 
-            4. EXPERIENCE (⭐⭐⭐⭐⭐ Weight):
-               - ✅ REWRITE bullet points to include the missing keywords while maintaining factual truth about the candidate's journey.
-               - ❌ DO NOT change Job Titles or Company Names.
+            [KEYWORD STRATEGY]
+            - ✅ NO BRANDING: Do not repeat company names or branding fluff.
+            - ✅ PHRASE-LEVEL MATCHING: Embed technical noun phrases (e.g., "Autonomous Systems", "Signal Processing") into sentences.
+            - ✅ TARGET DENSITY: 2-5% for critical keywords: ${kwAnalysis.missingCritical.join(', ')}.
+            - ✅ XYZ FORMULA: Accomplished [X] as measured by [Y], by doing [Z].
 
-            5. OUTPUT FORMAT:
-               - Return ONLY a valid JSON object matching the input ResumeData structure.
-               - Ensure all IDs and metadata are preserved.
-               - Do not include markdown blocks or extra text.
+            [INPUT DATA]
+            Target JD: "${jobDescription.substring(0, 3000)}"
+            Resume JSON: ${JSON.stringify(resume)}
+
+            [OUTPUT REQUIREMENTS]
+            1. Return ONLY the updated Resume JSON.
+            2. Use EXACT headers: PROFESSIONAL SUMMARY, PROFESSIONAL EXPERIENCE, TECHNICAL PROJECTS, SKILLS, EDUCATION.
+            3. Ensure "summary" is a high-impact, 1.5-line statement.
+            4. Each experience bullet MUST follow the format: [Action Verb] [Quantifiable Result] through [How/Tech Stack].
         `;
 
+        console.log("Neural Core: Calling OpenRouter with model meta-llama/llama-3.3-70b-instruct");
         const response = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
             model: 'meta-llama/llama-3.3-70b-instruct',
             messages: [{ role: 'user', content: prompt }],
             response_format: { type: 'json_object' },
-            temperature: 0.3
+            temperature: 0.2
         }, {
             headers: {
                 'Authorization': `Bearer ${API_KEY}`,
                 'Content-Type': 'application/json',
                 'HTTP-Referer': 'https://atsense.ai',
-                'X-Title': 'ATSense AI Optimization'
-            }
+                'X-Title': 'ATSense Neural Optimization'
+            },
+            timeout: 60000 // 60 second timeout for large optimizations
         });
 
         const optimizedContent = response.data.choices[0].message.content;
         const optimizedResume = JSON.parse(optimizedContent);
+
+        // Server-side validation for length
+        if (optimizedResume.summary && optimizedResume.summary.split(' ').length > 60) {
+            optimizedResume.summary = optimizedResume.summary.split(' ').slice(0, 50).join(' ') + '...';
+        }
 
         return NextResponse.json({
             success: true,
@@ -86,10 +100,11 @@ export async function POST(req: NextRequest) {
         });
 
     } catch (error: any) {
-        console.error('Neural Optimization Error:', error.response?.data || error.message);
+        const errorData = error.response?.data || error.message;
+        console.error('Neural Optimization Error:', errorData);
         return NextResponse.json({
             error: 'Optimization Failed',
-            details: error.message
+            details: typeof errorData === 'object' ? JSON.stringify(errorData) : errorData
         }, { status: 500 });
     }
 }
