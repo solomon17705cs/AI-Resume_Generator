@@ -15,7 +15,7 @@ export async function GET() {
         }, { status: 500 });
     }
 
-    const scope = encodeURIComponent('read:user repo');
+    const scope = encodeURIComponent('repo user:email read:user');
     const githubUrl = `https://github.com/login/oauth/authorize?client_id=${CLIENT_ID}&scope=${scope}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
 
     return NextResponse.redirect(githubUrl);
