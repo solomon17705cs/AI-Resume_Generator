@@ -48,7 +48,7 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install fastapi uvicorn spacy keybert sentence-transformers pydantic "urllib3<2"
 
 # Download the required NLP model
-python3 -m spacy download en_core_web_sm
+python3 -m spacy download en_core_web_sm # else try this ```pip install spacy keybert sentence-transformers fastapi uvicorn pydantic "urllib3<2"```
 
 # Launch the engine (on port 8001)
 python3 main.py
