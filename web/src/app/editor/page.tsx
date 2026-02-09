@@ -45,7 +45,8 @@ export default function EditorPage() {
         resume, analysis, setAnalysis, updatePersonalInfo,
         updateExperience, addExperience, removeExperience, updateResume,
         githubLinked, jobDescription, jobUrl, setJobContext,
-        syncLanguagesFromGitHub, addSkillCategory, updateSkillCategoryName
+        syncLanguagesFromGitHub, addSkillCategory, updateSkillCategoryName,
+        removeSkillCategory
     } = useResumeStore();
 
     const [activeTab, setActiveTab] = useState("personal");
@@ -494,6 +495,24 @@ export default function EditorPage() {
                                         <p className="text-[10px] text-slate-500 font-medium max-w-md leading-relaxed px-2">
                                             Pull your physical repository metadata to automatically populate your core language proficiency.
                                         </p>
+
+                                        <div className="space-y-8">
+                                            {resume.skills.filter(c => c.name.toLowerCase() === 'languages').map((category) => (
+                                                <SkillTagInput
+                                                    key={category.id}
+                                                    label={category.name}
+                                                    skills={category.skills}
+                                                    onLabelChange={(newName) => updateSkillCategoryName(category.id, newName)}
+                                                    onDelete={() => removeSkillCategory(category.id)}
+                                                    onChange={(newSkills) => {
+                                                        const updated = resume.skills.map(c =>
+                                                            c.id === category.id ? { ...c, skills: newSkills } : c
+                                                        );
+                                                        updateResume({ skills: updated });
+                                                    }}
+                                                />
+                                            ))}
+                                        </div>
                                     </div>
 
                                     <div className="space-y-10 pt-10 border-t border-white/5">
@@ -508,7 +527,7 @@ export default function EditorPage() {
                                             </button>
                                         </div>
                                         <div className="space-y-12">
-                                            {resume.skills.map((category) => (
+                                            {resume.skills.filter(c => c.name.toLowerCase() !== 'languages').map((category) => (
                                                 <SkillTagInput
                                                     key={category.id}
                                                     label={category.name}
