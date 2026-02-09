@@ -17,7 +17,8 @@ import {
     Briefcase,
     Github,
     RefreshCcw,
-    Sparkles
+    Sparkles,
+    Check
 } from "lucide-react";
 import Link from "next/link";
 import { useResumeStore } from "@/store/useResumeStore";
@@ -28,12 +29,14 @@ export default function DashboardPage() {
     const router = useRouter();
     const {
         githubLinked, githubUsername, githubRepos,
-        setGitHubStatus, setGitHubRepos, updateResume, resume
+        setGitHubStatus, setGitHubRepos, updateResume, resume,
+        syncLanguagesFromGitHub
     } = useResumeStore();
 
     const [isSyncing, setIsSyncing] = useState(false);
     const [importingId, setImportingId] = useState<number | null>(null);
     const [isHydrated, setIsHydrated] = useState(false);
+    const [languagesSynced, setLanguagesSynced] = useState(false);
 
     // Handle Hydration for Persisted Store
     useEffect(() => {
@@ -82,6 +85,17 @@ export default function DashboardPage() {
         try {
             const res = await axios.get('/api/github/repos');
             setGitHubRepos(res.data);
+
+            // Automatically sync languages to resume skills
+            console.log('🎯 Auto-syncing languages to resume...');
+            setTimeout(() => {
+                syncLanguagesFromGitHub();
+                setLanguagesSynced(true);
+                console.log('✅ Languages synced to resume!');
+
+                // Hide notification after 3 seconds
+                setTimeout(() => setLanguagesSynced(false), 3000);
+            }, 500); // Small delay to ensure repos are set in state
         } catch (err) {
             console.error("Failed to fetch GitHub repos");
         } finally {
@@ -193,6 +207,23 @@ export default function DashboardPage() {
 
                         {githubLinked && (
                             <PermissionDiagnostic />
+                        )}
+
+                        {languagesSynced && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="p-4 bg-green-500/10 border border-green-500/20 rounded-2xl flex items-center gap-3"
+                            >
+                                <div className="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center text-green-500">
+                                    <Check size={18} />
+                                </div>
+                                <div>
+                                    <h5 className="text-[10px] font-black uppercase tracking-widest text-green-500">Languages Synced!</h5>
+                                    <p className="text-[10px] text-slate-400 font-medium">All programming languages from your repos have been added to your resume skills.</p>
+                                </div>
+                            </motion.div>
                         )}
 
                         {!githubLinked ? (
@@ -349,9 +380,17 @@ const PermissionDiagnostic = () => {
         const check = async () => {
             try {
                 const res = await axios.get('/api/debug/token-scopes');
+                console.log('🔍 Token Scope Diagnostic:', res.data);
                 setStatus(res.data);
+
+                if (!res.data.isFullyAuthorized) {
+                    console.warn('⚠️ MISSING SCOPES:', res.data.missingScopes);
+                    console.log('✅ Current Scopes:', res.data.grantedScopes);
+                } else {
+                    console.log('✅ All required scopes granted!');
+                }
             } catch (e) {
-                console.error("Diagnostic failed");
+                console.error("❌ Diagnostic failed:", e);
             }
         };
         check();

@@ -53,9 +53,12 @@ export async function GET(req: NextRequest) {
             }
 
             try {
+                console.log(`🔍 Fetching languages for: ${repo.name}`);
                 const langRes = await axios.get(repo.languages_url, {
                     headers: { Authorization: `token ${accessToken}` }
                 });
+
+                console.log(`✅ Languages for ${repo.name}:`, langRes.data);
 
                 // Convert language bytes to percentage
                 const totalBytes = Object.values(langRes.data).reduce((a: any, b: any) => a + b, 0) as number;
@@ -67,6 +70,8 @@ export async function GET(req: NextRequest) {
                     .filter(lang => lang.percentage > 0.5) // Filter out noise
                     .sort((a, b) => b.percentage - a.percentage);
 
+                console.log(`📊 Processed languages for ${repo.name}:`, languages);
+
                 return {
                     id: repo.id,
                     name: repo.name,
@@ -77,7 +82,8 @@ export async function GET(req: NextRequest) {
                     updated_at: repo.updated_at,
                     url: repo.html_url
                 };
-            } catch (err) {
+            } catch (err: any) {
+                console.error(`❌ Failed to fetch languages for ${repo.name}:`, err.response?.status, err.message);
                 return {
                     id: repo.id,
                     name: repo.name,

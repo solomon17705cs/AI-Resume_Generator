@@ -26,6 +26,7 @@ interface ResumeState {
     githubRepos: any[];
     setGitHubStatus: (status: { linked: boolean; username: string; avatar?: string }) => void;
     setGitHubRepos: (repos: any[]) => void;
+    syncLanguagesFromGitHub: () => void;
 }
 
 const DEFAULT_RESUME: ResumeData = {
@@ -156,6 +157,60 @@ export const useResumeStore = create<ResumeState>()(
 
             setGitHubRepos: (repos) => set({
                 githubRepos: repos
+            }),
+
+            syncLanguagesFromGitHub: () => set((state) => {
+                // Extract all unique languages from all repos
+                const languageMap = new Map<string, number>();
+
+                state.githubRepos.forEach((repo) => {
+                    if (repo.languages && Array.isArray(repo.languages)) {
+                        repo.languages.forEach((lang: { name: string; percentage: number }) => {
+                            const currentCount = languageMap.get(lang.name) || 0;
+                            languageMap.set(lang.name, currentCount + 1);
+                        });
+                    }
+                });
+
+                // Sort languages by frequency (most used first)
+                const sortedLanguages = Array.from(languageMap.entries())
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([name]) => name);
+
+                console.log('🔧 Extracted languages from GitHub:', sortedLanguages);
+
+                // Find or create the "Languages" skill category
+                const existingSkills = state.resume.skills;
+                const languagesCategoryIndex = existingSkills.findIndex(
+                    cat => cat.name.toLowerCase() === 'languages'
+                );
+
+                let updatedSkills;
+                if (languagesCategoryIndex >= 0) {
+                    // Merge with existing languages, avoiding duplicates
+                    const existingLangs = existingSkills[languagesCategoryIndex].skills;
+                    const mergedLangs = Array.from(new Set([...sortedLanguages, ...existingLangs]));
+
+                    updatedSkills = existingSkills.map((cat, idx) =>
+                        idx === languagesCategoryIndex
+                            ? { ...cat, skills: mergedLangs }
+                            : cat
+                    );
+                } else {
+                    // Create new "Languages" category
+                    updatedSkills = [
+                        { id: `skill-${Date.now()}`, name: 'Languages', skills: sortedLanguages },
+                        ...existingSkills
+                    ];
+                }
+
+                return {
+                    resume: {
+                        ...state.resume,
+                        skills: updatedSkills,
+                        lastModified: new Date().toISOString()
+                    }
+                };
             }),
         }),
         {
