@@ -139,6 +139,20 @@ export default function DashboardPage() {
                     <SidebarItem href="#" icon={<Settings size={18} />} label="Settings" />
                     <SidebarItem href="/profile" icon={<User size={18} />} label="Profile" />
                 </div>
+
+                <div className="mt-auto pt-6 border-t border-white/5">
+                    <button
+                        onClick={() => {
+                            document.cookie = "github_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+                            setGitHubStatus({ linked: false, username: '', avatar: '' });
+                            router.push('/login');
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-red-500 hover:bg-red-500/10 transition-all"
+                    >
+                        <RefreshCcw size={18} />
+                        Log Out
+                    </button>
+                </div>
             </aside>
 
             {/* Main Content */}
@@ -176,6 +190,10 @@ export default function DashboardPage() {
                                 </button>
                             )}
                         </div>
+
+                        {githubLinked && (
+                            <PermissionDiagnostic />
+                        )}
 
                         {!githubLinked ? (
                             <div className="p-16 glass-dark border border-white/5 rounded-[40px] text-center space-y-6 relative overflow-hidden group">
@@ -323,6 +341,44 @@ const SidebarItem = ({ icon, label, active = false, href }: any) => (
         {label}
     </Link>
 );
+
+const PermissionDiagnostic = () => {
+    const [status, setStatus] = useState<any>(null);
+
+    useEffect(() => {
+        const check = async () => {
+            try {
+                const res = await axios.get('/api/debug/token-scopes');
+                setStatus(res.data);
+            } catch (e) {
+                console.error("Diagnostic failed");
+            }
+        };
+        check();
+    }, []);
+
+    if (!status || status.isFullyAuthorized) return null;
+
+    return (
+        <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-yellow-500/20 rounded-lg flex items-center justify-center text-yellow-500">
+                    <ShieldCheck size={18} />
+                </div>
+                <div>
+                    <h5 className="text-[10px] font-black uppercase tracking-widest text-yellow-500">Limited Permissions Detected</h5>
+                    <p className="text-[10px] text-slate-400 font-medium">To see repository languages, we need "Repo" access. Your current token only has: {status.grantedScopes.join(', ')}</p>
+                </div>
+            </div>
+            <button
+                onClick={() => window.location.href = "/api/auth/github"}
+                className="px-4 py-2 bg-yellow-500 text-slate-950 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-yellow-500/10"
+            >
+                Grant Full Access
+            </button>
+        </div>
+    );
+};
 
 const LanguageBar = ({ languages }: { languages: any[] }) => {
     if (!languages || languages.length === 0) {
