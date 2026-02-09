@@ -72,11 +72,14 @@ export interface ATSAnalysis {
     reasoning: string;
     atsType?: string;
     atsProfile?: any;
-    keywordMetadata?: {
-        keyword: string;
-        category: string;
-        confidence: number;
+    keywordMetrics?: {
+        text: string;
+        found: boolean;
+        priority: 'high' | 'medium' | 'low';
+        count_in_jd: number;
+        count_in_resume: number;
         context: string;
+        recommended_bullet?: string;
     }[];
     suggestions: {
         id: string;

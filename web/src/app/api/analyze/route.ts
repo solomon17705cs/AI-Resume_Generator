@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
                     
                     OUTPUT REQUIREMENTS (JSON):
                     1. "reasoning": Provide a 2-sentence strategic insight. Explain WHY the current match score is what it is and how it relates to ${atsProfile.name}'s parsing behavior.
-                    2. "additionalSuggestions": Provide 2 ATS-specific suggestions. MUST have "type" (critical, warning, info) and "message". Focus on ${atsProfile.name}-specific optimizations.
+                    2. "additionalSuggestions": Provide 4 high-impact ATS-specific suggestions. MUST have "type" (critical, warning, info) and "message". Focus on ${atsProfile.name}-specific optimizations and semantic relevance gaps.
                     
                     Return ONLY a valid JSON object.
                 `;
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
                 method: atsDetection.detectionMethod,
                 reasoning: atsDetection.reasoning
             },
-            keyword_metadata: kwAnalysis.extractedMetadata,
+            keyword_metrics: pyResponse.data.keyword_metrics,
             match_forensics: {
                 ...pyResponse.data.match_forensics,
                 keyword_density: kwAnalysis.density // Use our more accurate density

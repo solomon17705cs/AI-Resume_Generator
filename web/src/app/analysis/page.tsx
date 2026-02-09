@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import TransformationDiff from '@/components/dashboard/TransformationDiff';
 import {
     Target,
     Zap,
@@ -21,7 +22,9 @@ import {
     Sparkles,
     ArrowRight,
     BarChart4,
-    Compass
+    Compass,
+    Type,
+    Layout
 } from "lucide-react";
 import Link from "next/link";
 import { useResumeStore } from "@/store/useResumeStore";
@@ -31,6 +34,16 @@ import { ATSScoreGauge } from "@/components/dashboard/ATSScoreGauge";
 import { ReasoningPanel } from "@/components/dashboard/ReasoningPanel";
 import { LogoutButton } from "@/components/layout/LogoutButton";
 import { SkillIntelligence } from "@/components/dashboard/SkillIntelligence";
+import NeuralProgressOverlay from '@/components/dashboard/NeuralProgressOverlay';
+import MagicFixPanel from '@/components/dashboard/MagicFixPanel';
+
+const NEURAL_STEPS = [
+    { name: "Keyword Injection", icon: <Cpu size={20} />, description: "Aligning technical tokens with JD semantic clusters." },
+    { name: "Section Reordering", icon: <Layout size={20} />, description: "Optimizing structure for industry-standard ATS parsing." },
+    { name: "Content Transformation", icon: <TrendingUp size={20} />, description: "Converting tasks into high-impact XYZ formulas." },
+    { name: "Clarity Optimization", icon: <Type size={20} />, description: "Reducing verbosity and improving Flesch readability." },
+    { name: "ATS Validation", icon: <ShieldCheck size={20} />, description: "Final integrity check against the target platform rules." }
+];
 
 export default function AnalysisPage() {
     const router = useRouter();
@@ -40,7 +53,9 @@ export default function AnalysisPage() {
     } = useResumeStore();
 
     const [isFixing, setIsFixing] = useState(false);
-
+    const [fixingStep, setFixingStep] = useState(0);
+    const [transformationLog, setTransformationLog] = useState<{ before: string, after: string, step: string }[] | null>(null);
+    const [isAnalyzingSuggestion, setIsAnalyzingSuggestion] = useState(false);
     const [isHydrated, setIsHydrated] = useState(false);
 
     useEffect(() => {
@@ -62,9 +77,20 @@ export default function AnalysisPage() {
         if (!jobDescription || !analysis) return;
 
         const beforeScore = analysis.overallScore;
+        const beforeSummary = resume.summary;
+
         setIsFixing(true);
+        setFixingStep(0);
+        setTransformationLog(null);
+
         try {
-            // 1. Optimize
+            // STEP 1-3 Simulation
+            for (let i = 1; i <= 3; i++) {
+                await new Promise(r => setTimeout(r, 1200));
+                setFixingStep(i);
+            }
+
+            // Actual Optimization Trigger
             const optRes = await axios.post('/api/optimize-full', {
                 resume,
                 jobDescription,
@@ -72,8 +98,31 @@ export default function AnalysisPage() {
             });
 
             if (optRes.data.success) {
+                setFixingStep(4);
                 const optimizedResume = optRes.data.optimizedResume;
                 updateResume(optimizedResume);
+
+                // Capture a representative change for the log
+                const log = [
+                    {
+                        step: "Content Transformation",
+                        before: beforeSummary.slice(0, 150) + "...",
+                        after: optimizedResume.summary.slice(0, 150) + "..."
+                    }
+                ];
+
+                if (optimizedResume.experience?.[0]?.bullets?.[0] && resume.experience?.[0]?.bullets?.[0]) {
+                    log.push({
+                        step: "XYZ Formula Injection",
+                        before: resume.experience[0].bullets[0],
+                        after: optimizedResume.experience[0].bullets[0]
+                    });
+                }
+
+                setTransformationLog(log);
+
+                await new Promise(r => setTimeout(r, 1000));
+                setFixingStep(5);
 
                 // 2. Re-Analyze
                 const analysisRes = await axios.post('/api/analyze', {
@@ -88,27 +137,26 @@ export default function AnalysisPage() {
                         overallScore: afterScore,
                         atsType: analysisRes.data.ats_type,
                         atsProfile: analysisRes.data.ats_profile,
-                        sectionScores: { experience: 85, skills: 80, impact: 95 },
+                        sectionScores: analysisRes.data.section_scores || { experience: afterScore, skills: afterScore, impact: afterScore },
                         keywords: {
                             found: analysisRes.data.found_keywords,
                             missing: analysisRes.data.missing_keywords
                         },
-                        keywordMetadata: analysisRes.data.keyword_metadata,
+                        keywordMetrics: analysisRes.data.keyword_metrics,
                         reasoning: analysisRes.data.reasoning,
-                        suggestions: analysisRes.data.suggestions.map((s: any, i: number) => ({
-                            id: i.toString(),
+                        suggestions: (analysisRes.data.suggestions || []).map((s: any, i: number) => ({
+                            ...s,
+                            id: s.id || i.toString(),
                             type: s.type || 'info',
-                            title: s.title,
-                            description: s.description,
-                            action: s.action,
-                            examples: s.examples,
-                            message: typeof s === 'string' ? s : s.message
                         })),
                         forensics: analysisRes.data.match_forensics
                     });
 
                     const improvement = (afterScore - beforeScore).toFixed(1);
-                    alert(`🚀 Success! Score improved from ${beforeScore}% to ${afterScore}% (+${improvement}%). \nYour resume has been strategically optimized.`);
+                    const estimation = optRes.data.scoreImpactEstimation || improvement;
+
+                    // Final wait for cinematic effect
+                    await new Promise(r => setTimeout(r, 800));
                 }
             }
         } catch (error) {
@@ -116,6 +164,7 @@ export default function AnalysisPage() {
             alert("Optimization engine encountered an error.");
         } finally {
             setIsFixing(false);
+            setFixingStep(0);
         }
     };
 
@@ -123,6 +172,11 @@ export default function AnalysisPage() {
 
     return (
         <div className="h-screen bg-slate-950 text-slate-100 flex font-sans overflow-hidden">
+            <NeuralProgressOverlay
+                isVisible={isFixing}
+                currentStep={fixingStep}
+                steps={NEURAL_STEPS}
+            />
             {/* Sidebar */}
             <aside className="w-64 border-r border-white/5 flex flex-col glass-dark shrink-0 h-full">
                 <div className="p-6 flex flex-col h-full">
@@ -181,6 +235,41 @@ export default function AnalysisPage() {
                         </div>
                     ) : (
                         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                            {/* NEW: Magic Fix Transformation Section */}
+                            {analysis && (
+                                <MagicFixPanel
+                                    currentScore={analysis.overallScore}
+                                    isFixing={isFixing}
+                                    onFix={handleFixAll}
+                                    matchForensics={analysis.forensics}
+                                />
+                            )}
+
+                            <AnimatePresence>
+                                {transformationLog && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="space-y-6"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <Sparkles className="text-blue-500" />
+                                            <h3 className="text-2xl font-bold">Transformation Intelligence</h3>
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-4">
+                                            {transformationLog.map((log, i) => (
+                                                <TransformationDiff
+                                                    key={i}
+                                                    before={log.before}
+                                                    after={log.after}
+                                                    stepName={log.step}
+                                                />
+                                            ))}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
                             {/* Score Overview */}
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                 <div className="lg:col-span-2 p-10 glass-dark border border-white/5 rounded-[48px] flex flex-col md:flex-row items-center justify-between gap-12 relative overflow-hidden">
@@ -214,41 +303,38 @@ export default function AnalysisPage() {
                                                         ))}
                                                     </div>
                                                 </div>
-
-                                                {analysis.overallScore < 85 && (
-                                                    <button
-                                                        onClick={handleFixAll}
-                                                        disabled={isFixing}
-                                                        className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-xl shadow-indigo-500/20 disabled:opacity-50 group"
-                                                    >
-                                                        {isFixing ? (
-                                                            <>
-                                                                <Sparkles size={14} className="animate-spin text-indigo-200" />
-                                                                Fixing Low Scores...
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <Wand2 size={14} className="group-hover:rotate-12 transition-transform" />
-                                                                Fix All Low Scores
-                                                            </>
-                                                        )}
-                                                    </button>
-                                                )}
                                             </div>
                                         )}
                                     </div>
-                                    <div className="w-48 h-48 scale-110 shrink-0">
+                                    <div className="w-48 h-48 scale-110 shrink-0 relative">
                                         <ATSScoreGauge score={analysis.overallScore} />
+                                        {(isAnalyzingSuggestion || isFixing) && (
+                                            <div className="absolute inset-0 flex items-center justify-center bg-slate-950/20 rounded-full animate-pulse">
+                                                <div className="text-[8px] font-black text-white uppercase tracking-[0.3em] bg-blue-600 px-2 py-1 rounded shadow-lg">Recalculating</div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
                                 <div className="p-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[48px] text-white space-y-6">
                                     <h4 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60 text-center">Hybrid Match Breakdown</h4>
                                     <div className="space-y-5">
-                                        <ForensicStat label="Keyword Match (40%)" value={analysis.forensics?.keyword_match || 0} />
-                                        <ForensicStat label="Section Compliance (30%)" value={analysis.forensics?.section_compliance || 0} />
-                                        <ForensicStat label="Semantic Relevance (20%)" value={analysis.forensics?.semantic_relevance || 0} />
-                                        <ForensicStat label="Clarity & Recency (10%)" value={analysis.forensics?.clarity_recency || 0} />
+                                        <ForensicStat
+                                            label="Keyword Match (40%)"
+                                            value={analysis.forensics?.keyword_match ? (analysis.forensics.keyword_match * 0.4) : (analysis.overallScore * 0.4)}
+                                        />
+                                        <ForensicStat
+                                            label="Section Compliance (30%)"
+                                            value={analysis.forensics?.section_compliance ? (analysis.forensics.section_compliance * 0.3) : (analysis.overallScore * 0.3)}
+                                        />
+                                        <ForensicStat
+                                            label="Semantic Relevance (20%)"
+                                            value={analysis.forensics?.semantic_relevance ? (analysis.forensics.semantic_relevance * 0.2) : (analysis.overallScore * 0.2)}
+                                        />
+                                        <ForensicStat
+                                            label="Clarity & Recency (10%)"
+                                            value={analysis.forensics?.clarity_recency ? (analysis.forensics.clarity_recency * 0.1) : (analysis.overallScore * 0.1)}
+                                        />
                                     </div>
                                     <p className="text-[9px] font-medium opacity-70 text-center leading-relaxed mt-4">
                                         Your score is calculated using our Multi-Layer Hybrid Algorithm, simulating modern ATS ranking logic.
@@ -258,9 +344,9 @@ export default function AnalysisPage() {
 
                             {/* Section breakdown */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <MetricCard label="Experience Impact" score={analysis.sectionScores.experience} icon={<Cpu size={24} />} color="blue" />
-                                <MetricCard label="Skill Alignment" score={analysis.sectionScores.skills} icon={<BarChart4 size={24} />} color="emerald" />
-                                <MetricCard label="XYZ Formatting" score={analysis.sectionScores.impact} icon={<Settings size={24} />} color="indigo" />
+                                <MetricCard label="Experience Impact" score={analysis.sectionScores?.experience || 0} icon={<Cpu size={24} />} color="blue" />
+                                <MetricCard label="Skill Alignment" score={analysis.sectionScores?.skills || 0} icon={<BarChart4 size={24} />} color="emerald" />
+                                <MetricCard label="XYZ Formatting" score={analysis.sectionScores?.impact || 0} icon={<Settings size={24} />} color="indigo" />
                             </div>
 
                             {/* Strategic Intelligence & Engineering Inventory */}
@@ -274,6 +360,101 @@ export default function AnalysisPage() {
                                         reasoning={analysis.reasoning}
                                         suggestions={analysis.suggestions}
                                         forensics={analysis.forensics}
+                                        onRefreshSuggestion={(id) => {
+                                            if (id === 'missing-keys' && (analysis.keywords?.missing?.length || 0) > 0) {
+                                                const allMissing = analysis.keywords!.missing;
+                                                const shuffled = [...allMissing].sort(() => 0.5 - Math.random());
+                                                const newKeywords = shuffled.slice(0, 2);
+
+                                                setAnalysis({
+                                                    ...analysis,
+                                                    suggestions: analysis.suggestions.map(s =>
+                                                        s.id === 'missing-keys'
+                                                            ? {
+                                                                ...s,
+                                                                examples: newKeywords.map(kw => ({
+                                                                    before: "Skilled in various technologies",
+                                                                    after: `Expertise in ${kw} and modular system design`
+                                                                }))
+                                                            }
+                                                            : s
+                                                    )
+                                                });
+                                            } else if (id === 'density-low' && (analysis.keywords?.missing?.length || 0) > 0) {
+                                                const allMissing = analysis.keywords!.missing;
+                                                const shuffled = [...allMissing].sort(() => 0.5 - Math.random());
+                                                const newKeywords = shuffled.slice(0, 3);
+                                                setAnalysis({
+                                                    ...analysis,
+                                                    suggestions: analysis.suggestions.map(s =>
+                                                        s.id === 'density-low'
+                                                            ? {
+                                                                ...s,
+                                                                examples: newKeywords.map(kw => ({
+                                                                    before: "Handled project development",
+                                                                    after: `Led ${kw} implementation and maintenance, increasing efficiency by 15%`
+                                                                }))
+                                                            }
+                                                            : s
+                                                    )
+                                                });
+                                            } else if (!isNaN(Number(id))) {
+                                                setAnalysis({
+                                                    ...analysis,
+                                                    suggestions: [...analysis.suggestions].sort(() => 0.5 - Math.random())
+                                                });
+                                            }
+                                        }}
+                                        onApplySuggestion={async (ex) => {
+                                            const { resume, updateResume } = useResumeStore.getState();
+                                            let newSummary = resume.summary;
+                                            let newExperience = [...resume.experience];
+                                            let newProjects = [...resume.projects];
+
+                                            if (resume.summary.includes(ex.before)) {
+                                                newSummary = resume.summary.replace(ex.before, ex.after);
+                                            } else {
+                                                newExperience = resume.experience.map(exp => ({
+                                                    ...exp,
+                                                    bullets: exp.bullets.map(b => b.includes(ex.before) ? b.replace(ex.before, ex.after) : b)
+                                                }));
+                                                newProjects = resume.projects.map(proj => ({
+                                                    ...proj,
+                                                    bullets: proj.bullets.map(b => b.includes(ex.before) ? b.replace(ex.before, ex.after) : b)
+                                                }));
+                                            }
+
+                                            updateResume({ summary: newSummary, experience: newExperience, projects: newProjects });
+
+                                            setIsAnalyzingSuggestion(true);
+                                            try {
+                                                const response = await axios.post('/api/analyze', {
+                                                    resume_text: JSON.stringify({ ...resume, summary: newSummary, experience: newExperience, projects: newProjects }),
+                                                    job_description: jobDescription,
+                                                    jd_url: jobUrl
+                                                });
+                                                if (response.data) {
+                                                    setAnalysis({
+                                                        overallScore: response.data.score,
+                                                        atsType: response.data.ats_type,
+                                                        atsProfile: response.data.ats_profile,
+                                                        sectionScores: response.data.section_scores || { experience: response.data.score, skills: response.data.score, impact: response.data.score },
+                                                        keywords: {
+                                                            found: response.data.found_keywords,
+                                                            missing: response.data.missing_keywords
+                                                        },
+                                                        keywordMetrics: response.data.keyword_metrics,
+                                                        reasoning: response.data.reasoning,
+                                                        suggestions: (response.data.suggestions || []).map((s: any, i: number) => ({
+                                                            ...s,
+                                                            id: s.id || i.toString(),
+                                                            type: s.type || 'info',
+                                                        })),
+                                                        forensics: response.data.match_forensics
+                                                    });
+                                                }
+                                            } catch (err) { console.error(err); } finally { setIsAnalyzingSuggestion(false); }
+                                        }}
                                     />
                                 </div>
 
@@ -285,89 +466,129 @@ export default function AnalysisPage() {
                             {/* Keywords & Foundational Gaps */}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                 <div className="p-10 glass-dark border border-white/5 rounded-[48px] space-y-8">
-                                    <h3 className="text-2xl font-bold flex items-center gap-3">
-                                        <AlertCircle className="text-yellow-500" />
-                                        Keyword Gaps
-                                    </h3>
+                                    <div className="flex justify-between items-center">
+                                        <h3 className="text-2xl font-bold flex items-center gap-3">
+                                            <AlertCircle className="text-yellow-500" />
+                                            Keyword Gaps
+                                        </h3>
+                                        <div className="px-3 py-1 bg-red-500/10 text-red-400 text-[10px] font-black uppercase rounded-full border border-red-500/20">
+                                            Priority Optimization
+                                        </div>
+                                    </div>
 
-                                    <div className="space-y-6">
-                                        {analysis.keywordMetadata ? (
-                                            Object.entries(
-                                                analysis.keywordMetadata
-                                                    .filter(kw => analysis.keywords.missing.includes(kw.keyword))
-                                                    .reduce((acc: any, kw) => {
-                                                        if (!acc[kw.category]) acc[kw.category] = [];
-                                                        acc[kw.category].push(kw);
-                                                        return acc;
-                                                    }, {})
-                                            ).map(([category, kws]: any) => (
-                                                <div key={category} className="space-y-3">
-                                                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{category}</h4>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {kws.map((kw: any, i: number) => (
-                                                            <span key={i} title={kw.context} className="px-3 py-1.5 bg-red-500/5 border border-red-500/10 text-red-400 rounded-lg text-[10px] font-bold uppercase tracking-wider cursor-help">
-                                                                {kw.keyword}
-                                                            </span>
-                                                        ))}
+                                    <div className="space-y-4">
+                                        {analysis.keywordMetrics && analysis.keywordMetrics.filter(kw => !kw.found).length > 0 ? (
+                                            analysis.keywordMetrics
+                                                .filter(kw => !kw.found)
+                                                .sort((a, b) => {
+                                                    const order = { high: 0, medium: 1, low: 2 };
+                                                    return order[a.priority as keyof typeof order] - order[b.priority as keyof typeof order];
+                                                })
+                                                .slice(0, 6)
+                                                .map((kw, i) => (
+                                                    <div key={i} className="p-5 bg-white/5 border border-white/5 rounded-3xl space-y-3 group hover:border-blue-500/30 transition-all">
+                                                        <div className="flex justify-between items-center">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className={`w-2 h-2 rounded-full ${kw.priority === 'high' ? 'bg-red-500' : kw.priority === 'medium' ? 'bg-yellow-500' : 'bg-blue-500'}`} />
+                                                                <span className="text-xs font-black uppercase tracking-wider text-slate-200">{kw.text}</span>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (kw.recommended_bullet) {
+                                                                        const { resume, updateResume } = useResumeStore.getState();
+                                                                        updateResume({
+                                                                            experience: resume.experience.map((exp, idx) => idx === 0 ? { ...exp, bullets: [kw.recommended_bullet!, ...exp.bullets] } : exp)
+                                                                        });
+                                                                        // Real-time re-analysis
+                                                                        setIsAnalyzingSuggestion(true);
+                                                                        axios.post('/api/analyze', {
+                                                                            resume_text: JSON.stringify(useResumeStore.getState().resume),
+                                                                            job_description: jobDescription,
+                                                                            jd_url: jobUrl
+                                                                        }).then(res => res.data && setAnalysis({
+                                                                            ...res.data,
+                                                                            keywordMetrics: res.data.keyword_metrics,
+                                                                            forensics: {
+                                                                                ...res.data.match_forensics,
+                                                                                keyword_density: res.data.match_forensics?.keyword_match // Placeholder mapping
+                                                                            },
+                                                                            atsType: res.data.ats_type,
+                                                                            atsProfile: res.data.ats_profile,
+                                                                            sectionScores: res.data.section_scores || { experience: res.data.score, skills: res.data.score, impact: res.data.score }
+                                                                        })).finally(() => setIsAnalyzingSuggestion(false));
+                                                                    }
+                                                                }}
+                                                                className="text-[8px] font-black uppercase tracking-[0.1em] text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1 opacity-0 group-hover:opacity-100"
+                                                            >
+                                                                Add to Resume <Wand2 size={10} />
+                                                            </button>
+                                                        </div>
+                                                        <div className="text-[10px] text-slate-500 font-medium leading-relaxed italic">
+                                                            "{kw.context}"
+                                                        </div>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
+                                                                <div className="h-full bg-red-500/40" style={{ width: '0%' }} />
+                                                            </div>
+                                                            <span className="text-[8px] font-black text-slate-600 uppercase">0% Density</span>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))
+                                                ))
                                         ) : (
-                                            <div className="flex flex-wrap gap-3">
-                                                {analysis.keywords.missing.map((word, i) => (
-                                                    <span key={i} className="px-4 py-2 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-xs font-bold uppercase tracking-widest">
-                                                        {word}
-                                                    </span>
-                                                ))}
+                                            <div className="text-center py-10 opacity-50">
+                                                <CheckCircle2 className="mx-auto mb-2 text-emerald-500" />
+                                                <p className="text-xs font-bold uppercase tracking-widest leading-loose">No critical gaps detected.</p>
                                             </div>
                                         )}
                                     </div>
-                                    <p className="text-slate-500 text-sm font-medium italic border-l-2 border-white/5 pl-4">
-                                        High-priority skills missing from your current draft.
-                                    </p>
                                 </div>
 
                                 <div className="p-10 glass-dark border border-white/5 rounded-[48px] space-y-8">
-                                    <h3 className="text-2xl font-bold flex items-center gap-3">
-                                        <CheckCircle2 className="text-emerald-500" />
-                                        Verified Keywords
-                                    </h3>
+                                    <div className="flex justify-between items-center">
+                                        <h3 className="text-2xl font-bold flex items-center gap-3">
+                                            <CheckCircle2 className="text-emerald-500" />
+                                            Verified Keywords
+                                        </h3>
+                                        <div className="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase rounded-full border border-emerald-500/20">
+                                            Matching Signals
+                                        </div>
+                                    </div>
 
-                                    <div className="space-y-6">
-                                        {analysis.keywordMetadata ? (
-                                            Object.entries(
-                                                analysis.keywordMetadata
-                                                    .filter(kw => analysis.keywords.found.includes(kw.keyword))
-                                                    .reduce((acc: any, kw) => {
-                                                        if (!acc[kw.category]) acc[kw.category] = [];
-                                                        acc[kw.category].push(kw);
-                                                        return acc;
-                                                    }, {})
-                                            ).map(([category, kws]: any) => (
-                                                <div key={category} className="space-y-3">
-                                                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{category}</h4>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {kws.map((kw: any, i: number) => (
-                                                            <span key={i} title={kw.context} className="px-3 py-1.5 bg-emerald-500/5 border border-emerald-500/10 text-emerald-400 rounded-lg text-[10px] font-bold uppercase tracking-wider cursor-help">
-                                                                {kw.keyword}
+                                    <div className="space-y-4">
+                                        {analysis.keywordMetrics && analysis.keywordMetrics.filter(kw => kw.found).length > 0 ? (
+                                            analysis.keywordMetrics
+                                                .filter(kw => kw.found)
+                                                .sort((a, b) => b.count_in_resume - a.count_in_resume)
+                                                .slice(0, 6)
+                                                .map((kw, i) => (
+                                                    <div key={i} className="p-5 bg-white/5 border border-emerald-500/5 rounded-3xl space-y-3">
+                                                        <div className="flex justify-between items-center">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                                                                <span className="text-xs font-black uppercase tracking-wider text-slate-200">{kw.text}</span>
+                                                            </div>
+                                                            <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">{kw.count_in_resume}x Detected</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
+                                                                <div
+                                                                    className={`h-full ${kw.count_in_resume >= 2 ? 'bg-emerald-500' : 'bg-yellow-500'}`}
+                                                                    style={{ width: `${Math.min(kw.count_in_resume * 33, 100)}%` }}
+                                                                />
+                                                            </div>
+                                                            <span className="text-[8px] font-black text-slate-400 uppercase">
+                                                                {kw.count_in_resume >= 2 ? 'Optimal' : 'Low Density'}
                                                             </span>
-                                                        ))}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))
+                                                ))
                                         ) : (
-                                            <div className="flex flex-wrap gap-3">
-                                                {analysis.keywords.found.map((word, i) => (
-                                                    <span key={i} className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs font-bold uppercase tracking-widest">
-                                                        {word}
-                                                    </span>
-                                                ))}
+                                            <div className="text-center py-10 opacity-50">
+                                                <Target className="mx-auto mb-2" />
+                                                <p className="text-xs font-bold uppercase tracking-widest leading-loose">Search results empty.</p>
                                             </div>
                                         )}
                                     </div>
-                                    <p className="text-slate-500 text-sm font-medium italic border-l-2 border-white/5 pl-4">
-                                        Successfully detected technical signals.
-                                    </p>
                                 </div>
                             </div>
                         </div>

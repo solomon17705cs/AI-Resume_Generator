@@ -157,12 +157,10 @@ export default function DashboardPage() {
                         <SidebarItem href="/analysis" icon={<Target size={18} />} label="Job Analyzer" />
                         <SidebarItem href="/jobs" icon={<Compass size={18} />} label="Pathfinder" />
                         <SidebarItem href="/recommendations" icon={<ShieldCheck size={18} />} label="Recommendations" />
-                        <div className="h-px bg-white/5 my-4" />
-                        <SidebarItem href="#" icon={<Settings size={18} />} label="Settings" />
-                        <SidebarItem href="/profile" icon={<User size={18} />} label="Profile" />
                     </nav>
 
-                    <div className="mt-auto pt-6 border-t border-white/5">
+                    <div className="mt-auto pt-6 border-t border-white/5 space-y-2">
+                        <SidebarItem href="/profile" icon={<User size={18} />} label="Profile" />
                         <LogoutButton />
                     </div>
                 </div>
