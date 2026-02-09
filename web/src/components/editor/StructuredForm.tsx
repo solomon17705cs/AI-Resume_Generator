@@ -81,6 +81,7 @@ export const StructuredForm: React.FC<StructuredFormProps> = ({
             location: "",
             startDate: "",
             endDate: "",
+            isCurrent: false,
             bullets: [""]
         };
         setData(prev => ({ ...prev, experience: [...prev.experience, newExp] }));
@@ -92,12 +93,12 @@ export const StructuredForm: React.FC<StructuredFormProps> = ({
                 <section className="space-y-8">
                     <SectionHeader title="Identify & Contact" />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <InputField label="Full Name" value={data.personalInfo.fullName} onChange={(v) => updatePersonalInfo('fullName', v)} />
-                        <InputField label="Email Address" value={data.personalInfo.email} onChange={(v) => updatePersonalInfo('email', v)} />
-                        <InputField label="Phone Number" value={data.personalInfo.phone} onChange={(v) => updatePersonalInfo('phone', v)} />
-                        <InputField label="Location" value={data.personalInfo.location} onChange={(v) => updatePersonalInfo('location', v)} />
-                        <InputField label="LinkedIn URL" value={data.personalInfo.linkedin} onChange={(v) => updatePersonalInfo('linkedin', v)} />
-                        <InputField label="GitHub URL" value={data.personalInfo.github} onChange={(v) => updatePersonalInfo('github', v)} />
+                        <InputField label="Full Name" value={data.personalInfo.fullName} onChange={(v: string) => updatePersonalInfo('fullName', v)} />
+                        <InputField label="Email Address" value={data.personalInfo.email} onChange={(v: string) => updatePersonalInfo('email', v.toLowerCase())} />
+                        <InputField label="Phone Number" value={data.personalInfo.phone} onChange={(v: string) => updatePersonalInfo('phone', v)} />
+                        <InputField label="Location" value={data.personalInfo.location} onChange={(v: string) => updatePersonalInfo('location', v)} />
+                        <InputField label="LinkedIn URL" value={data.personalInfo.linkedin} onChange={(v: string) => updatePersonalInfo('linkedin', v)} />
+                        <InputField label="GitHub URL" value={data.personalInfo.github} onChange={(v: string) => updatePersonalInfo('github', v)} />
                     </div>
                 </section>
             )}
@@ -116,12 +117,12 @@ export const StructuredForm: React.FC<StructuredFormProps> = ({
                                 </button>
 
                                 <div className="grid grid-cols-2 gap-6 mb-6">
-                                    <InputField label="Company" value={exp.company} onChange={(v) => {
+                                    <InputField label="Company" value={exp.company} onChange={(v: string) => {
                                         const newList = [...data.experience];
                                         newList[idx].company = v;
                                         setData(prev => ({ ...prev, experience: newList }));
                                     }} />
-                                    <InputField label="Job Title" value={exp.role} onChange={(v) => {
+                                    <InputField label="Job Title" value={exp.role} onChange={(v: string) => {
                                         const newList = [...data.experience];
                                         newList[idx].role = v;
                                         setData(prev => ({ ...prev, experience: newList }));
@@ -151,8 +152,8 @@ export const StructuredForm: React.FC<StructuredFormProps> = ({
                                                 onClick={() => handleAIIdentify('experience', exp.id, bIdx)}
                                                 disabled={optimizingId === `${exp.id}-${bIdx}`}
                                                 className={`absolute bottom-4 right-4 p-2.5 rounded-xl transition-all shadow-xl ${optimizingId === `${exp.id}-${bIdx}`
-                                                        ? 'bg-blue-600/20 text-blue-400 rotate-180 animate-spin'
-                                                        : 'bg-blue-600 text-white hover:scale-110 shadow-blue-600/20 opacity-0 group-hover/bullet:opacity-100'
+                                                    ? 'bg-blue-600/20 text-blue-400 rotate-180 animate-spin'
+                                                    : 'bg-blue-600 text-white hover:scale-110 shadow-blue-600/20 opacity-0 group-hover/bullet:opacity-100'
                                                     }`}
                                                 title="AI Fix - Rewrite with XYZ Formula"
                                             >
@@ -193,16 +194,18 @@ export const StructuredForm: React.FC<StructuredFormProps> = ({
                 <section className="space-y-8">
                     <SectionHeader title="Key Skills" />
                     <div className="space-y-6">
-                        <SkillInput
-                            label="Technical Skills"
-                            values={data.skills.technical}
-                            onChange={(v) => setData(prev => ({ ...prev, skills: { ...prev.skills, technical: v } }))}
-                        />
-                        <SkillInput
-                            label="Tools & Platforms"
-                            values={data.skills.tools}
-                            onChange={(v) => setData(prev => ({ ...prev, skills: { ...prev.skills, tools: v } }))}
-                        />
+                        {data.skills.map((category, catIdx) => (
+                            <SkillInput
+                                key={category.id}
+                                label={category.name}
+                                values={category.skills}
+                                onChange={(v: string[]) => {
+                                    const newSkills = [...data.skills];
+                                    newSkills[catIdx].skills = v;
+                                    setData(prev => ({ ...prev, skills: newSkills }));
+                                }}
+                            />
+                        ))}
                     </div>
                 </section>
             )}

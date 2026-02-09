@@ -189,7 +189,7 @@ export default function EditorPage() {
                                     <SectionHeader title="Identify & Contact" />
                                     <div className="grid grid-cols-2 gap-6">
                                         <InputField label="Full Name" value={resume.personalInfo.fullName} onChange={(v: string) => updatePersonalInfo({ fullName: v })} />
-                                        <InputField label="Email Address" value={resume.personalInfo.email} onChange={(v: string) => updatePersonalInfo({ email: v })} />
+                                        <InputField label="Email Address" value={resume.personalInfo.email} onChange={(v: string) => updatePersonalInfo({ email: v.toLowerCase() })} />
                                         <InputField label="Phone" value={resume.personalInfo.phone} onChange={(v: string) => updatePersonalInfo({ phone: v })} />
                                         <InputField label="Location" value={resume.personalInfo.location} onChange={(v: string) => updatePersonalInfo({ location: v })} />
                                         <InputField label="LinkedIn" value={resume.personalInfo.linkedin} onChange={(v: string) => updatePersonalInfo({ linkedin: v })} />

@@ -17,6 +17,13 @@ interface ResumeState {
     updateExperience: (id: string, updates: Partial<ResumeData['experience'][0]>) => void;
     addExperience: () => void;
     removeExperience: (id: string) => void;
+
+    // GitHub Integration
+    githubLinked: boolean;
+    githubUsername: string;
+    githubRepos: any[];
+    setGitHubStatus: (status: { linked: boolean; username: string }) => void;
+    setGitHubRepos: (repos: any[]) => void;
 }
 
 const DEFAULT_RESUME: ResumeData = {
@@ -75,6 +82,9 @@ export const useResumeStore = create<ResumeState>((set) => ({
     resume: DEFAULT_RESUME,
     analysis: null,
     history: [],
+    githubLinked: false,
+    githubUsername: '',
+    githubRepos: [],
 
     updateResume: (updates) => set((state) => ({
         resume: { ...state.resume, ...updates, lastModified: new Date().toISOString() }
@@ -132,4 +142,13 @@ export const useResumeStore = create<ResumeState>((set) => ({
             experience: state.resume.experience.filter(exp => exp.id !== id)
         }
     })),
+
+    setGitHubStatus: (status) => set({
+        githubLinked: status.linked,
+        githubUsername: status.username
+    }),
+
+    setGitHubRepos: (repos) => set({
+        githubRepos: repos
+    }),
 }));

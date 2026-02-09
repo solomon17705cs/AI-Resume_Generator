@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
     Plus,
@@ -9,23 +9,88 @@ import {
     Target,
     Zap,
     LayoutDashboard,
-    Search,
     Settings,
     User,
-    ExternalLink,
     ChevronRight,
     TrendingUp,
     ShieldCheck,
-    Briefcase
+    Briefcase,
+    Github,
+    RefreshCcw,
+    Sparkles
 } from "lucide-react";
 import Link from "next/link";
+import { useResumeStore } from "@/store/useResumeStore";
+import axios from "axios";
 
 export default function DashboardPage() {
-    const recentResumes = [
-        { name: "Frontend Engineer - Google", score: 92, lastEdited: "2 hours ago", role: "Software Engineer" },
-        { name: "Fullstack Dev - Vercel", score: 87, lastEdited: "1 day ago", role: "Product Engineer" },
-        { name: "AI Researcher - OpenAI", score: 74, lastEdited: "3 days ago", role: "AI Engineer" },
-    ];
+    const {
+        githubLinked, githubUsername, githubRepos,
+        setGitHubStatus, setGitHubRepos, updateResume, resume
+    } = useResumeStore();
+
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [importingId, setImportingId] = useState<number | null>(null);
+
+    // Capture GitHub callback status from URL
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const linked = params.get('github_linked');
+        const username = params.get('username');
+
+        if (linked === 'true' && username) {
+            setGitHubStatus({ linked: true, username });
+            // Clean up the URL
+            window.history.replaceState({}, document.title, "/dashboard");
+        }
+    }, [setGitHubStatus]);
+
+    // Initial fetch of repos if linked
+    useEffect(() => {
+        if (githubLinked && githubRepos.length === 0) {
+            fetchRepos();
+        }
+    }, [githubLinked]);
+
+    const fetchRepos = async () => {
+        setIsSyncing(true);
+        try {
+            const res = await axios.get('/api/github/repos');
+            setGitHubRepos(res.data);
+        } catch (err) {
+            console.error("Failed to fetch GitHub repos");
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
+    const handleImportRepo = async (repo: any) => {
+        setImportingId(repo.id);
+        try {
+            // AI Enhancement - Generate high-impact bullets from repo data
+            const aiRes = await axios.post('/api/optimize-project', {
+                repoName: repo.name,
+                description: repo.description,
+                language: repo.language,
+                stars: repo.stars
+            });
+
+            const newProject = {
+                id: Math.random().toString(36).substr(2, 9),
+                name: repo.name,
+                description: repo.description || "Project imported from GitHub",
+                technologies: repo.language ? [repo.language] : [],
+                link: repo.url,
+                bullets: aiRes.data.bullets
+            };
+
+            updateResume({ projects: [...resume.projects, newProject] });
+        } catch (err) {
+            console.error("AI import failed, using fallback");
+        } finally {
+            setImportingId(null);
+        }
+    };
 
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100 flex font-sans overflow-hidden">
@@ -43,7 +108,6 @@ export default function DashboardPage() {
                     <SidebarItem icon={<FileText size={18} />} label="My Resumes" />
                     <SidebarItem icon={<Target size={18} />} label="Job Analyzer" />
                     <SidebarItem icon={<Briefcase size={18} />} label="Applications" />
-                    <SidebarItem icon={<Search size={18} />} label="Market Trends" />
                 </nav>
 
                 <div className="pt-6 border-t border-white/5 space-y-2">
@@ -59,86 +123,140 @@ export default function DashboardPage() {
                     {/* Header */}
                     <header className="flex justify-between items-end">
                         <div>
-                            <h1 className="text-4xl font-black font-display tracking-tight mb-2">Workspace</h1>
+                            <h1 className="text-4xl font-black font-display tracking-tight mb-2">
+                                Workspace {githubUsername && <span className="text-blue-500">/ {githubUsername}</span>}
+                            </h1>
                             <p className="text-slate-500 text-sm font-medium">Engineer your career trajectory with precision AI.</p>
                         </div>
                         <Link href="/editor" className="flex items-center gap-2 px-8 py-3.5 bg-white text-slate-950 rounded-2xl font-black text-sm hover:scale-105 transition-all shadow-xl shadow-white/10 active:scale-95">
-                            <Plus size={18} strokeWidth={3} /> Create New Resume
+                            <Plus size={18} strokeWidth={3} /> Launch Editor
                         </Link>
                     </header>
 
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <StatCard label="Total Resumes" value="12" delta="+2 this month" />
-                        <StatCard label="Avg. Match Score" value="84%" delta="+5% increase" positive />
-                        <StatCard label="Interview Rate" value="32%" delta="+12% vs last pool" positive />
-                    </div>
-
-                    {/* Recent Resumes List */}
+                    {/* GitHub Integration Section */}
                     <section className="space-y-6">
                         <div className="flex justify-between items-center">
-                            <h2 className="text-lg font-black uppercase tracking-widest text-slate-400">Recent Projects</h2>
-                            <button className="text-xs font-bold text-blue-500 hover:text-blue-400 transition-colors uppercase tracking-widest">View Archives</button>
+                            <div className="flex items-center gap-3">
+                                <Github size={24} className="text-white" />
+                                <h2 className="text-lg font-black uppercase tracking-widest text-slate-400">Engineering Inventory</h2>
+                            </div>
+                            {githubLinked && (
+                                <button
+                                    onClick={fetchRepos}
+                                    disabled={isSyncing}
+                                    className="text-[10px] font-black text-blue-500 uppercase tracking-widest flex items-center gap-2 hover:text-blue-400 transition-all disabled:opacity-50"
+                                >
+                                    <RefreshCcw size={12} className={isSyncing ? "animate-spin" : ""} />
+                                    {isSyncing ? "Syncing..." : "Sync GitHub"}
+                                </button>
+                            )}
                         </div>
 
-                        <div className="grid grid-cols-1 gap-4">
-                            {recentResumes.map((resume, i) => (
-                                <motion.div
-                                    key={i}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: i * 0.1 }}
-                                    className="group flex items-center justify-between p-6 bg-slate-900/50 border border-white/5 rounded-3xl hover:bg-slate-900 hover:border-blue-500/30 transition-all cursor-pointer"
-                                >
-                                    <div className="flex items-center gap-6">
-                                        <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-500 group-hover:scale-110 transition-all">
-                                            <FileText size={24} />
-                                        </div>
-                                        <div>
-                                            <h3 className="font-bold text-lg mb-1">{resume.name}</h3>
-                                            <div className="flex items-center gap-3 text-xs text-slate-500 font-medium lowercase">
-                                                <span className="flex items-center gap-1 uppercase tracking-widest text-[10px]"><Clock size={12} /> {resume.lastEdited}</span>
-                                                <span className="w-1 h-1 bg-slate-800 rounded-full" />
-                                                <span className="flex items-center gap-1 uppercase tracking-widest text-[10px]"><ShieldCheck size={12} className="text-green-500" /> {resume.role}</span>
+                        {!githubLinked ? (
+                            <div className="p-16 glass-dark border border-white/5 rounded-[40px] text-center space-y-6 relative overflow-hidden group">
+                                <div className="absolute inset-0 bg-blue-600/5 group-hover:bg-blue-600/10 transition-all" />
+                                <div className="relative z-10 space-y-4">
+                                    <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto text-slate-400 shadow-2xl">
+                                        <Github size={32} />
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-white">No GitHub account linked</h3>
+                                    <p className="text-sm text-slate-500 max-w-sm mx-auto leading-relaxed font-medium">
+                                        Connect your GitHub to pull real projects, stars, and languages directly into your engineered resume.
+                                    </p>
+                                    <button
+                                        onClick={() => window.location.href = "/api/auth/github"}
+                                        className="px-10 py-4 bg-white text-slate-950 rounded-[24px] font-black text-sm hover:scale-105 transition-all shadow-2xl shadow-white/10 active:scale-95"
+                                    >
+                                        Connect GitHub Account
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {githubRepos.length === 0 && !isSyncing ? (
+                                    <div className="col-span-full py-20 text-center text-slate-600 font-bold uppercase tracking-widest text-xs">
+                                        No repositories found.
+                                    </div>
+                                ) : (
+                                    githubRepos.slice(0, 6).map((repo, i) => (
+                                        <motion.div
+                                            key={repo.id}
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: i * 0.05 }}
+                                            className="p-8 bg-slate-950 border border-white/5 rounded-[32px] flex flex-col justify-between group hover:border-blue-500/30 transition-all shadow-xl"
+                                        >
+                                            <div className="space-y-4">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-blue-600/10 group-hover:text-blue-500 transition-colors">
+                                                        <FileText size={20} />
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 px-3 py-1 bg-white/5 rounded-full text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                                                        <TrendingUp size={10} className="text-blue-500" /> {repo.stars}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-lg font-bold text-white mb-1 group-hover:text-blue-400 transition-colors truncate">{repo.name}</h4>
+                                                    <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed h-8">
+                                                        {repo.description || "Experimental engineering project."}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="pt-6 flex items-center justify-between border-t border-white/5 mt-6">
+                                                <span className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em]">
+                                                    {repo.language || 'Code'}
+                                                </span>
+                                                <button
+                                                    onClick={() => handleImportRepo(repo)}
+                                                    disabled={importingId === repo.id}
+                                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg active:scale-95 disabled:opacity-50"
+                                                >
+                                                    {importingId === repo.id ? "Optimizing..." : "Import Repo"}
+                                                </button>
+                                            </div>
+                                        </motion.div>
+                                    ))
+                                )}
+                            </div>
+                        )}
+                    </section>
+
+                    {/* Resume Snapshot Section */}
+                    {resume.projects.length > 0 && (
+                        <section className="space-y-6 pt-12 border-t border-white/5">
+                            <div className="flex items-center gap-3">
+                                <Sparkles size={24} className="text-blue-500" />
+                                <h2 className="text-lg font-black uppercase tracking-widest text-slate-400">Project Workspace</h2>
+                            </div>
+                            <div className="grid grid-cols-1 gap-4">
+                                {resume.projects.map((proj) => (
+                                    <div key={proj.id} className="p-6 bg-slate-900 border border-white/5 rounded-3xl flex items-center justify-between group">
+                                        <div className="flex items-center gap-6">
+                                            <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500">
+                                                <ShieldCheck size={24} />
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-lg text-white">{proj.name}</h3>
+                                                <p className="text-xs text-slate-500 font-medium">{proj.technologies.join(' • ')}</p>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div className="flex items-center gap-12">
-                                        <div className="text-right">
-                                            <div className={`text-2xl font-black font-display ${resume.score > 90 ? 'text-green-500' : 'text-yellow-500'}`}>{resume.score}%</div>
-                                            <div className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Match Score</div>
-                                        </div>
-                                        <Link href="/editor" className="p-3 bg-white/5 rounded-xl text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-lg">
+                                        <Link href="/editor" className="p-3 bg-white/5 rounded-xl text-slate-400 hover:bg-blue-600 hover:text-white transition-all">
                                             <ChevronRight size={20} />
                                         </Link>
                                     </div>
-                                </motion.div>
-                            ))}
-                        </div>
-                    </section>
-
-                    {/* Quick Insights */}
-                    <section className="p-8 bg-gradient-to-br from-blue-600/20 to-cyan-500/10 border border-blue-500/20 rounded-[40px] flex items-center justify-between">
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2 text-blue-400">
-                                <TrendingUp size={20} />
-                                <span className="text-xs font-black uppercase tracking-widest">Market Intelligence</span>
+                                ))}
                             </div>
-                            <h3 className="text-2xl font-bold tracking-tight">Software Engineer roles are up 15%.</h3>
-                            <p className="text-sm text-slate-400 max-w-md leading-relaxed">Your "Backend - OpenAI" resume is perfectly positioned. Recommended action: Update 'LLM Orchestration' bullet.</p>
-                        </div>
-                        <button className="px-8 py-3.5 bg-blue-600 text-white rounded-2xl font-black text-sm hover:bg-blue-500 transition-all shadow-xl shadow-blue-500/20">
-                            Update Skills
-                        </button>
-                    </section>
+                        </section>
+                    )}
                 </div>
             </main>
 
             <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.05); border-radius: 10px; }
-      `}</style>
+                .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.05); border-radius: 10px; }
+            `}</style>
         </div>
     );
 }
@@ -148,14 +266,4 @@ const SidebarItem = ({ icon, label, active = false }: any) => (
         {icon}
         {label}
     </button>
-);
-
-const StatCard = ({ label, value, delta, positive = false }: any) => (
-    <div className="p-8 glass-dark border border-white/5 rounded-[32px] space-y-3">
-        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{label}</div>
-        <div className="text-4xl font-black font-display tracking-tight text-white">{value}</div>
-        <div className={`text-xs font-bold uppercase tracking-widest ${positive ? 'text-green-500' : 'text-slate-600'}`}>
-            {delta}
-        </div>
-    </div>
 );
