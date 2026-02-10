@@ -1,17 +1,37 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Set, Tuple
 from keybert import KeyBERT
 from sentence_transformers import SentenceTransformer, util
 import uvicorn
 import os
 import re
+from nltk.tokenize import sent_tokenize, word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+import nltk
 
-app = FastAPI(title="ATSense Hybrid Intelligence Engine")
+# Download required NLTK data
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt')
+try:
+    nltk.data.find('tokenizers/averaged_perceptron_tagger')
+except LookupError:
+    nltk.download('averaged_perceptron_tagger')
+try:
+    nltk.data.find('corpora/wordnet')
+except LookupError:
+    nltk.download('wordnet')
+
+app = FastAPI(title="ATSense Advanced Semantic Engine")
 
 # Advanced Models Cluster
 kw_model = None
 sim_model = None
+lemmatizer = WordNetLemmatizer()
+stop_words = set(stopwords.words('english'))
 
 CS_SEMANTIC_KEYWORDS = {
     'frontend': [
@@ -66,7 +86,98 @@ def get_models():
             print(f"Model error: {e}")
     return kw_model, sim_model
 
-class AnalysisRequest(BaseModel):
+def lemmatize_text(text: str) -> str:
+    """Convert text to lemmatized form for better matching."""
+    try:
+        tokens = word_tokenize(text.lower())
+        lemmatized = [lemmatizer.lemmatize(token) for token in tokens if token.isalpha()]
+        return ' '.join(lemmatized)
+    except:
+        return text.lower()
+
+def find_semantic_matches(keyword: str, text: str, model) -> Tuple[bool, float]:
+    """Find semantic matches of a keyword in text, not just exact matches."""
+    try:
+        # Direct substring match (fastest)
+        if keyword.lower() in text.lower():
+            return True, 1.0
+        
+        # Lemmatized match
+        keyword_lemmatized = lemmatize_text(keyword)
+        text_lemmatized = lemmatize_text(text)
+        if keyword_lemmatized in text_lemmatized:
+            return True, 0.9
+        
+        # Semantic embedding similarity
+        kw_embedding = model.encode(keyword, convert_to_tensor=False)
+        
+        # Split text into sentences and find best match
+        sentences = re.split(r'[.!?]+', text)
+        best_score = 0.0
+        
+        for sentence in sentences:
+            if len(sentence.strip()) > 10:
+                sent_embedding = model.encode(sentence, convert_to_tensor=False)
+                similarity = float(util.cos_sim(kw_embedding, sent_embedding)[0][0])
+                if similarity > best_score:
+                    best_score = similarity
+        
+        # Return True if semantic similarity is above threshold
+        if best_score > 0.65:
+            return True, min(0.85, best_score)
+        
+        return False, best_score
+    except:
+        return False, 0.0
+
+def extract_technical_terms(text: str) -> Set[str]:
+    """Extract technical terms, frameworks, tools, and acronyms."""
+    technical_patterns = [
+        r'\b(?:Python|JavaScript|TypeScript|Java|C\+\+|C#|Go|Rust|PHP|Ruby|Swift)\b',
+        r'\b(?:React|Vue|Angular|Node\.js|Express|Django|Flask|Spring|ASP\.NET)\b',
+        r'\b(?:AWS|Azure|Google Cloud|GCP|Docker|Kubernetes|Git|Jenkins)\b',
+        r'\b(?:REST|GraphQL|API|SQL|NoSQL|PostgreSQL|MongoDB|Redis)\b',
+        r'\b(?:HTML|CSS|JSON|XML|YAML|UNIX|Linux|Windows)\b',
+        r'\b[A-Z][A-Z]+\b',  # Acronyms
+    ]
+    
+    found_terms = set()
+    for pattern in technical_patterns:
+        matches = re.findall(pattern, text)
+        found_terms.update(matches)
+    
+    return found_terms
+
+def improve_keyword_matching(keywords: List[str], resume_text: str, sim_model) -> Dict[str, Dict]:
+    """Enhanced keyword matching with semantic understanding."""
+    matches = {}
+    
+    for kw in keywords:
+        kw_lower = kw.lower()
+        
+        # Try exact match first
+        exact_count = len(re.findall(r'\b' + re.escape(kw_lower) + r'\b', resume_text.lower()))
+        
+        if exact_count > 0:
+            matches[kw] = {
+                'found': True,
+                'count': exact_count,
+                'confidence': 1.0,
+                'method': 'exact'
+            }
+        else:
+            # Try semantic match
+            found, confidence = find_semantic_matches(kw, resume_text, sim_model)
+            matches[kw] = {
+                'found': found,
+                'count': 1 if found else 0,
+                'confidence': confidence,
+                'method': 'semantic' if found else 'none'
+            }
+    
+    return matches
+
+def clean_keywords(keywords: List[str], text: str) -> List[str]:
     resume_text: str
     job_description: str
     ats_profile: Optional[Dict] = None

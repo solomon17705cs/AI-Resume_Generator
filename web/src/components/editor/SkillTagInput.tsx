@@ -3,6 +3,7 @@
 import React, { useState, KeyboardEvent } from "react";
 import { X, Plus, Hash, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { getAutocompleteSuggestions } from "@/utils/autocompleteSuggestions";
 
 interface SkillTagInputProps {
     skills: string[];
@@ -16,16 +17,49 @@ export const SkillTagInput: React.FC<SkillTagInputProps> = ({ skills, onChange, 
     const [inputValue, setInputValue] = useState("");
     const [isEditingLabel, setIsEditingLabel] = useState(false);
     const [tempLabel, setTempLabel] = useState(label);
+    const [suggestions, setSuggestions] = useState<string[]>([]);
+    const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+
+    const handleInputChange = (value: string) => {
+        setInputValue(value);
+        if (value.trim().length > 0) {
+            const newSuggestions = getAutocompleteSuggestions(value, 'skill');
+            setSuggestions(newSuggestions.filter(s => !skills.includes(s)));
+            setSelectedSuggestionIndex(-1);
+        } else {
+            setSuggestions([]);
+        }
+    };
+
+    const addSkill = (skillToAdd: string) => {
+        if (!skills.includes(skillToAdd.trim())) {
+            onChange([...skills, skillToAdd.trim()]);
+        }
+        setInputValue("");
+        setSuggestions([]);
+    };
 
     const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter' && inputValue.trim()) {
+        if (e.key === 'ArrowDown') {
             e.preventDefault();
-            if (!skills.includes(inputValue.trim())) {
-                onChange([...skills, inputValue.trim()]);
+            setSelectedSuggestionIndex(prev =>
+                prev < suggestions.length - 1 ? prev + 1 : prev
+            );
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setSelectedSuggestionIndex(prev => (prev > 0 ? prev - 1 : -1));
+        } else if (e.key === 'Enter' && inputValue.trim()) {
+            e.preventDefault();
+            if (selectedSuggestionIndex >= 0) {
+                addSkill(suggestions[selectedSuggestionIndex]);
+            } else {
+                addSkill(inputValue);
             }
-            setInputValue("");
         } else if (e.key === 'Backspace' && !inputValue && skills.length > 0) {
             onChange(skills.slice(0, -1));
+        } else if (e.key === 'Escape') {
+            setSuggestions([]);
+            setSelectedSuggestionIndex(-1);
         }
     };
 
@@ -85,7 +119,7 @@ export const SkillTagInput: React.FC<SkillTagInputProps> = ({ skills, onChange, 
                 )}
             </div>
 
-            <div className="flex flex-wrap gap-2 p-6 bg-slate-900/50 border border-white/5 rounded-[32px] min-h-[120px] transition-all focus-within:border-blue-500/30">
+            <div className="flex flex-wrap gap-2 p-6 bg-slate-900/50 border border-white/5 rounded-[32px] min-h-[120px] transition-all focus-within:border-blue-500/30 relative">
                 <AnimatePresence>
                     {skills.map((skill) => (
                         <motion.span
@@ -106,14 +140,47 @@ export const SkillTagInput: React.FC<SkillTagInputProps> = ({ skills, onChange, 
                     ))}
                 </AnimatePresence>
 
-                <input
-                    type="text"
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Type and hit Enter..."
-                    className="flex-1 min-w-[150px] bg-transparent border-none outline-none text-sm text-slate-300 placeholder:text-slate-700"
-                />
+                <div className="flex-1 min-w-[150px] relative">
+                    <input
+                        type="text"
+                        value={inputValue}
+                        onChange={(e) => handleInputChange(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Type and hit Enter... (or Arrow Down for suggestions)"
+                        className="w-full bg-transparent border-none outline-none text-sm text-slate-300 placeholder:text-slate-700"
+                        autoComplete="off"
+                    />
+
+                    {/* Type-ahead Suggestions */}
+                    <AnimatePresence>
+                        {suggestions.length > 0 && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -8 }}
+                                className="absolute top-full left-0 right-0 mt-2 bg-slate-900 border border-white/10 rounded-xl shadow-2xl shadow-black/50 z-50 max-h-48 overflow-y-auto"
+                            >
+                                {suggestions.map((suggestion, index) => (
+                                    <button
+                                        key={suggestion}
+                                        onMouseDown={() => addSkill(suggestion)}
+                                        onMouseEnter={() => setSelectedSuggestionIndex(index)}
+                                        className={`w-full px-4 py-2.5 text-sm text-left transition-all flex items-center justify-between group ${
+                                            index === selectedSuggestionIndex
+                                                ? 'bg-blue-600/20 border-l-2 border-blue-500 text-blue-400'
+                                                : 'hover:bg-white/5 text-slate-300 border-l-2 border-transparent'
+                                        }`}
+                                    >
+                                        <span className="font-medium">{suggestion}</span>
+                                        {index === selectedSuggestionIndex && (
+                                            <Plus size={14} className="text-blue-400" />
+                                        )}
+                                    </button>
+                                ))}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
             </div>
         </div>
     );
