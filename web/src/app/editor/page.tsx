@@ -46,8 +46,8 @@ export default function EditorPage() {
         resume, analysis, setAnalysis, updatePersonalInfo,
         updateExperience, addExperience, removeExperience, removeProject, removeEducation, updateResume,
         githubLinked, jobDescription, jobUrl, setJobContext,
-        syncLanguagesFromGitHub, addSkillCategory, updateSkillCategoryName,
-        removeSkillCategory
+        syncLanguagesFromGitHub, syncProjectsFromGitHub, addSkillCategory, updateSkillCategoryName,
+        removeSkillCategory, githubRepos
     } = useResumeStore();
 
     const [activeTab, setActiveTab] = useState("personal");
@@ -239,8 +239,19 @@ export default function EditorPage() {
                         <span className="text-xl font-black font-display tracking-tighter">ATSense</span>
                     </Link>
                     <div className="h-6 w-px bg-white/10" />
-                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
-                        Draft: <span className="text-blue-400">{resume.title}</span>
+                    <div className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest bg-white/5 py-1 px-3 rounded-lg border border-white/5 group">
+                        <span>Draft:</span>
+                        <input
+                            type="text"
+                            value={resume.title}
+                            onChange={(e) => updateResume({ title: e.target.value })}
+                            className="bg-transparent border-none text-blue-400 focus:outline-none focus:ring-0 p-0 w-auto min-w-[50px] cursor-text"
+                            onBlur={(e) => {
+                                if (!e.target.value.trim()) {
+                                    updateResume({ title: 'Untitled Resume' });
+                                }
+                            }}
+                        />
                     </div>
                 </div>
 
@@ -535,6 +546,21 @@ export default function EditorPage() {
                                                         const atsType = atsDetection.data.ats.id;
 
                                                         // Step 2: Generate full resume with schema
+                                                        const userProjects = Array.isArray(resume.projects) ? resume.projects : [];
+                                                        const projectContext = (userProjects.length > 0 && userProjects.some(p => p.name?.trim() && p.description?.trim()))
+                                                            ? userProjects
+                                                            : (githubLinked && Array.isArray(githubRepos) && githubRepos.length > 0
+                                                                ? githubRepos.slice(0, 5).map((repo: any) => ({
+                                                                    name: repo.name || 'Technical Project',
+                                                                    description: repo.description || 'Professional software development repository',
+                                                                    technologies: Array.isArray(repo.languages) ? repo.languages.map((l: any) => l.name) : [],
+                                                                    link: repo.html_url || '',
+                                                                    bullets: []
+                                                                }))
+                                                                : userProjects);
+
+                                                        console.log('🎯 [Build] Context built:', { projects: projectContext.length });
+
                                                         const response = await axios.post('/api/generate-resume', {
                                                             job_description: jobDescription,
                                                             user_data: {
@@ -542,7 +568,7 @@ export default function EditorPage() {
                                                                 current_role: resume.experience[0]?.role,
                                                                 years_experience: resume.experience.length,
                                                                 existing_experience: resume.experience,
-                                                                existing_projects: resume.projects,
+                                                                existing_projects: projectContext,
                                                                 existing_skills: resume.skills
                                                             },
                                                             ats_type: atsType || 'generic',
@@ -622,7 +648,8 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                                                         }
                                                     } catch (error: any) {
                                                         console.error(error);
-                                                        alert(error.response?.data?.error || "AI generation failed. Please try again.");
+                                                        const detail = error.response?.data?.details || error.response?.data?.error || error.message;
+                                                        alert(`Resume Transformation failed: ${detail}`);
                                                     } finally {
                                                         setIsOptimizing(false);
                                                     }
@@ -706,7 +733,21 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
 
                             {activeTab === "projects" && (
                                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-                                    <SectionHeader title="Technical Projects" onAdd={() => updateResume({ projects: [...resume.projects, { id: Math.random().toString(36).substr(2, 9), name: '', description: '', technologies: [], link: '', bullets: [''] }] })} />
+                                    <div className="flex items-end justify-between">
+                                        <SectionHeader
+                                            title="Technical Projects"
+                                            onAdd={() => updateResume({ projects: [...resume.projects, { id: Math.random().toString(36).substr(2, 9), name: '', description: '', technologies: [], link: '', bullets: [''] }] })}
+                                        />
+                                        {githubLinked && (
+                                            <button
+                                                onClick={syncProjectsFromGitHub}
+                                                className="flex items-center gap-3 px-6 py-3 bg-slate-900/80 backdrop-blur-md border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:border-blue-500/50 transition-all group shadow-xl mb-1"
+                                            >
+                                                <Github size={16} className="group-hover:scale-110 transition-transform" />
+                                                GitHub sync
+                                            </button>
+                                        )}
+                                    </div>
                                     <ImpactHint />
                                     <div className="space-y-10">
                                         {resume.projects.map((proj) => (
@@ -783,6 +824,13 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                                         <div className="flex items-center justify-between">
                                             <SectionHeader title="Skill Inventory" />
                                             <div className="flex items-center gap-3">
+                                                <button
+                                                    onClick={addSkillCategory}
+                                                    className="flex items-center gap-3 px-6 py-3 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-2xl hover:bg-blue-600 hover:text-white transition-all font-black text-[10px] uppercase tracking-widest group shadow-lg shadow-blue-900/5"
+                                                >
+                                                    <Plus size={16} className="group-hover:rotate-90 transition-transform" />
+                                                    Add Skill Category
+                                                </button>
                                                 {githubLinked && (
                                                     <button
                                                         onClick={syncLanguagesFromGitHub}
@@ -795,41 +843,11 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                                             </div>
                                         </div>
                                         <p className="text-[10px] text-slate-500 font-medium max-w-md leading-relaxed px-2">
-                                            Pull your physical repository metadata to automatically populate your core language proficiency.
+                                            Manage your technical stack and proficiencies. Pull your GitHub metadata or manually categorize your expertise.
                                         </p>
 
-                                        <div className="space-y-8">
-                                            {resume.skills.filter(c => c.name.toLowerCase() === 'languages').map((category) => (
-                                                <SkillTagInput
-                                                    key={category.id}
-                                                    label={category.name}
-                                                    skills={category.skills}
-                                                    onLabelChange={(newName) => updateSkillCategoryName(category.id, newName)}
-                                                    onDelete={() => removeSkillCategory(category.id)}
-                                                    onChange={(newSkills) => {
-                                                        const updated = resume.skills.map(c =>
-                                                            c.id === category.id ? { ...c, skills: newSkills } : c
-                                                        );
-                                                        updateResume({ skills: updated });
-                                                    }}
-                                                />
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-10 pt-10 border-t border-white/5">
-                                        <div className="flex items-center justify-between">
-                                            <SectionHeader title="Domain" />
-                                            <button
-                                                onClick={addSkillCategory}
-                                                className="flex items-center gap-3 px-6 py-3 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-2xl hover:bg-blue-600 hover:text-white transition-all font-black text-[10px] uppercase tracking-widest group shadow-lg shadow-blue-900/5"
-                                            >
-                                                <Layers size={16} className="group-hover:rotate-12 transition-transform" />
-                                                + Add New Domain
-                                            </button>
-                                        </div>
-                                        <div className="space-y-12">
-                                            {resume.skills.filter(c => c.name.toLowerCase() !== 'languages').map((category) => (
+                                        <div className="grid grid-cols-1 gap-12">
+                                            {resume.skills.map((category) => (
                                                 <SkillTagInput
                                                     key={category.id}
                                                     label={category.name}
@@ -1018,30 +1036,34 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
 }
 
 const SectionHeader = ({ title, onAdd }: { title: string, onAdd?: () => void }) => (
-    <div className="flex justify-between items-center group">
-        <div className="flex items-center gap-3">
-            <div className="w-1.5 h-6 bg-blue-600 rounded-full" />
-            <h2 className="text-3xl font-black font-display tracking-tight text-white">{title}</h2>
+    <div className="flex justify-between items-end gap-12 group mb-2">
+        <div className="space-y-1">
+            <h2 className="text-4xl font-black font-display tracking-tighter text-white bg-clip-text text-transparent bg-gradient-to-br from-white to-white/60">{title}</h2>
+            <div className="h-1 w-12 bg-blue-600 rounded-full group-hover:w-24 transition-all duration-500 shadow-[0_0_15px_rgba(37,99,235,0.5)]" />
         </div>
         {onAdd && (
             <button
                 onClick={onAdd}
-                className="px-5 py-2.5 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-2xl hover:bg-blue-600 hover:text-white transition-all font-black text-[10px] uppercase tracking-widest flex items-center gap-2"
+                className="px-6 py-3 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-2xl hover:bg-blue-600 hover:text-white transition-all font-black text-[10px] uppercase tracking-widest flex items-center gap-2 group shadow-lg shadow-blue-900/10"
             >
-                <Plus size={14} /> Add New Entry
+                <Plus size={16} className="group-hover:rotate-90 transition-transform duration-300" />
+                Add New Entry
             </button>
         )}
     </div>
 );
 
 const InputField = ({ label, value, onChange }: any) => (
-    <div className="space-y-3">
-        <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2">{label}</label>
-        <input
-            type="text"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-full bg-slate-900 border border-white/5 hover:border-white/10 rounded-2xl px-6 py-4 text-sm text-slate-200 focus:outline-none focus:border-blue-500 focus:bg-slate-900 transition-all font-medium"
-        />
+    <div className="space-y-3 group/input">
+        <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2 group-focus-within/input:text-blue-400 transition-colors">{label}</label>
+        <div className="relative">
+            <input
+                type="text"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                className="w-full bg-slate-900/50 backdrop-blur-sm border border-white/5 hover:border-white/10 rounded-2xl px-6 py-4 text-sm text-slate-200 focus:outline-none focus:border-blue-500/50 focus:bg-slate-900/80 transition-all font-medium shadow-inner shadow-black/20"
+            />
+            <div className="absolute inset-0 rounded-2xl pointer-events-none border border-transparent group-focus-within/input:border-blue-500/20 group-focus-within/input:shadow-[0_0_20px_rgba(37,99,235,0.05)]" />
+        </div>
     </div>
 );

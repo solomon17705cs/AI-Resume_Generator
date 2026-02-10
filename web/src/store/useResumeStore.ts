@@ -35,6 +35,7 @@ interface ResumeState {
     setGitHubStatus: (status: { linked: boolean; username: string; avatar?: string }) => void;
     setGitHubRepos: (repos: any[]) => void;
     syncLanguagesFromGitHub: () => void;
+    syncProjectsFromGitHub: () => void;
     addSkillCategory: () => void;
     updateSkillCategoryName: (id: string, newName: string) => void;
     removeSkillCategory: (id: string) => void;
@@ -245,6 +246,52 @@ export const useResumeStore = create<ResumeState>()(
                     resume: {
                         ...state.resume,
                         skills: existingSkills,
+                        lastModified: new Date().toISOString()
+                    }
+                };
+            }),
+
+            syncProjectsFromGitHub: () => set((state: any) => {
+                if (!state.githubRepos || state.githubRepos.length === 0) return state;
+
+                const currentProjects = [...state.resume.projects];
+                let hasChanges = false;
+
+                state.githubRepos.forEach((repo: any) => {
+                    const existingProjIndex = currentProjects.findIndex(
+                        p => p.name.toLowerCase() === repo.name.toLowerCase()
+                    );
+
+                    if (existingProjIndex >= 0) {
+                        // If project exists, add description to bullets if not already present
+                        if (repo.description && !currentProjects[existingProjIndex].bullets.includes(repo.description)) {
+                            currentProjects[existingProjIndex] = {
+                                ...currentProjects[existingProjIndex],
+                                bullets: [...currentProjects[existingProjIndex].bullets, repo.description],
+                                link: currentProjects[existingProjIndex].link || repo.html_url || ''
+                            };
+                            hasChanges = true;
+                        }
+                    } else {
+                        // Create new project
+                        currentProjects.push({
+                            id: `proj-${Math.random().toString(36).substr(2, 9)}`,
+                            name: repo.name,
+                            description: '',
+                            technologies: repo.languages?.slice(0, 5).map((l: any) => l.name) || [],
+                            link: repo.html_url || '',
+                            bullets: repo.description ? [repo.description] : []
+                        });
+                        hasChanges = true;
+                    }
+                });
+
+                if (!hasChanges) return state;
+
+                return {
+                    resume: {
+                        ...state.resume,
+                        projects: currentProjects,
                         lastModified: new Date().toISOString()
                     }
                 };
