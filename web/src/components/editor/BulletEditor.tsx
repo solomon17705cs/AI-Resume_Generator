@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Wand2, Sparkles, Check, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { getAutocompleteSuggestions } from "@/utils/autocompleteSuggestions";
 import axios from "axios";
 
 interface BulletEditorProps {
@@ -17,6 +18,23 @@ export const BulletEditor: React.FC<BulletEditorProps> = ({ value, onChange, job
     const [suggestion, setSuggestion] = useState<string | null>(null);
     const [explanation, setExplanation] = useState<string[]>([]);
     const [domain, setDomain] = useState<string | null>(null);
+    const [verbSuggestions, setVerbSuggestions] = useState<string[]>([]);
+    const [showVerbSuggestions, setShowVerbSuggestions] = useState(false);
+    const [selectedVerbIndex, setSelectedVerbIndex] = useState(-1);
+
+    // Extract the first word (potential verb) from the input
+    useEffect(() => {
+        const firstWord = value.split(/[\s,]/)[0];
+        if (firstWord.length > 0 && firstWord.length < 20) {
+            const suggestions = getAutocompleteSuggestions(firstWord, 'verb');
+            setVerbSuggestions(suggestions);
+            setShowVerbSuggestions(suggestions.length > 0);
+            setSelectedVerbIndex(-1);
+        } else {
+            setVerbSuggestions([]);
+            setShowVerbSuggestions(false);
+        }
+    }, [value]);
 
     const handleOptimize = async () => {
         if (!jobDescription) return;
@@ -37,15 +55,81 @@ export const BulletEditor: React.FC<BulletEditorProps> = ({ value, onChange, job
         }
     };
 
+    const handleVerbSelect = (verb: string) => {
+        const rest = value.substring(value.split(/[\s,]/)[0].length);
+        onChange(verb + rest);
+        setShowVerbSuggestions(false);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (!showVerbSuggestions) return;
+
+        switch (e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                setSelectedVerbIndex(prev =>
+                    prev < verbSuggestions.length - 1 ? prev + 1 : prev
+                );
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                setSelectedVerbIndex(prev => (prev > 0 ? prev - 1 : -1));
+                break;
+            case 'Enter':
+                e.preventDefault();
+                if (selectedVerbIndex >= 0) {
+                    handleVerbSelect(verbSuggestions[selectedVerbIndex]);
+                } else if (verbSuggestions.length > 0) {
+                    handleVerbSelect(verbSuggestions[0]);
+                }
+                break;
+            case 'Escape':
+                setShowVerbSuggestions(false);
+                break;
+        }
+    };
+
     return (
         <div className="relative group/bullet space-y-2">
             <div className="relative">
                 <textarea
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
+                    onKeyDown={handleKeyDown}
                     placeholder="Accomplished [X] as measured by [Y], by doing [Z]"
                     className="w-full bg-slate-900 border border-white/5 hover:border-white/10 rounded-2xl p-4 text-sm text-slate-300 focus:outline-none focus:border-blue-500/50 min-h-[80px] transition-all resize-none"
                 />
+
+                {/* Verb Type-ahead Suggestions */}
+                <AnimatePresence>
+                    {showVerbSuggestions && verbSuggestions.length > 0 && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -8 }}
+                            className="absolute top-12 left-4 right-4 bg-slate-900 border border-white/10 rounded-xl shadow-2xl shadow-black/50 z-50 max-h-40 overflow-y-auto"
+                        >
+                            {verbSuggestions.map((verb, index) => (
+                                <button
+                                    key={verb}
+                                    onMouseDown={() => handleVerbSelect(verb)}
+                                    onMouseEnter={() => setSelectedVerbIndex(index)}
+                                    className={`w-full px-3 py-2 text-xs text-left transition-all flex items-center justify-between group ${
+                                        index === selectedVerbIndex
+                                            ? 'bg-blue-600/20 border-l-2 border-blue-500 text-blue-400'
+                                            : 'hover:bg-white/5 text-slate-300 border-l-2 border-transparent'
+                                    }`}
+                                >
+                                    <span className="font-medium">{verb}</span>
+                                    {index === selectedVerbIndex && (
+                                        <Check size={12} className="text-blue-400" />
+                                    )}
+                                </button>
+                            ))}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
                 <div className="absolute bottom-3 right-3 flex gap-2">
                     {onRemove && (
                         <button

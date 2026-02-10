@@ -39,11 +39,13 @@ export async function GET(req: NextRequest) {
         const response = NextResponse.redirect(new URL(`/dashboard?github_linked=true&username=${githubUsername}&avatar=${encodeURIComponent(githubAvatar)}`, req.url));
 
         // Store access token in cookie
+        console.log('✅ Setting github_access_token cookie');
         response.cookies.set('github_access_token', accessToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
+            secure: false,  // Set to false for development, true in production
             sameSite: 'lax',
             path: '/',
+            maxAge: 60 * 60 * 24 * 30  // 30 days
         });
 
         return response;
