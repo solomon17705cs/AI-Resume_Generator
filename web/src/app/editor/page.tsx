@@ -733,21 +733,20 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
 
                             {activeTab === "projects" && (
                                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-                                    <div className="flex items-end justify-between">
-                                        <SectionHeader
-                                            title="Technical Projects"
-                                            onAdd={() => updateResume({ projects: [...resume.projects, { id: Math.random().toString(36).substr(2, 9), name: '', description: '', technologies: [], link: '', bullets: [''] }] })}
-                                        />
+                                    <SectionHeader
+                                        title="Technical Projects"
+                                        onAdd={() => updateResume({ projects: [...resume.projects, { id: Math.random().toString(36).substr(2, 9), name: '', description: '', technologies: [], link: '', bullets: [''] }] })}
+                                    >
                                         {githubLinked && (
                                             <button
                                                 onClick={syncProjectsFromGitHub}
-                                                className="flex items-center gap-3 px-6 py-3 bg-slate-900/80 backdrop-blur-md border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:border-blue-500/50 transition-all group shadow-xl mb-1"
+                                                className="flex items-center gap-3 px-6 py-3 bg-slate-900/80 backdrop-blur-md border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:border-blue-500/50 transition-all group shadow-xl"
                                             >
                                                 <Github size={16} className="group-hover:scale-110 transition-transform" />
                                                 GitHub sync
                                             </button>
                                         )}
-                                    </div>
+                                    </SectionHeader>
                                     <ImpactHint />
                                     <div className="space-y-10">
                                         {resume.projects.map((proj) => (
@@ -1035,21 +1034,24 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
     );
 }
 
-const SectionHeader = ({ title, onAdd }: { title: string, onAdd?: () => void }) => (
-    <div className="flex justify-between items-end gap-12 group mb-2">
+const SectionHeader = ({ title, onAdd, children }: { title: string, onAdd?: () => void, children?: React.ReactNode }) => (
+    <div className="flex justify-between items-end gap-8 group mb-2 w-full">
         <div className="space-y-1">
             <h2 className="text-4xl font-black font-display tracking-tighter text-white bg-clip-text text-transparent bg-gradient-to-br from-white to-white/60">{title}</h2>
             <div className="h-1 w-12 bg-blue-600 rounded-full group-hover:w-24 transition-all duration-500 shadow-[0_0_15px_rgba(37,99,235,0.5)]" />
         </div>
-        {onAdd && (
-            <button
-                onClick={onAdd}
-                className="px-6 py-3 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-2xl hover:bg-blue-600 hover:text-white transition-all font-black text-[10px] uppercase tracking-widest flex items-center gap-2 group shadow-lg shadow-blue-900/10"
-            >
-                <Plus size={16} className="group-hover:rotate-90 transition-transform duration-300" />
-                Add New Entry
-            </button>
-        )}
+        <div className="flex items-center gap-4">
+            {children}
+            {onAdd && (
+                <button
+                    onClick={onAdd}
+                    className="px-6 py-3 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-2xl hover:bg-blue-600 hover:text-white transition-all font-black text-[10px] uppercase tracking-widest flex items-center gap-2 group shadow-lg shadow-blue-900/10 whitespace-nowrap"
+                >
+                    <Plus size={16} className="group-hover:rotate-90 transition-transform duration-300" />
+                    Add New Entry
+                </button>
+            )}
+        </div>
     </div>
 );
 
