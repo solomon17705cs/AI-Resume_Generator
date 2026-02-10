@@ -42,6 +42,29 @@ export default function DashboardPage() {
 
     const isJobReferred = recommendationRequests.some(r => r.status === 'Approved');
 
+    // Fetch GitHub repos
+    async function fetchRepos() {
+        console.log('📡 Fetching GitHub repos...');
+        setIsSyncing(true);
+        try {
+            const res = await axios.get('/api/github/repos');
+            console.log('✅ Repos fetched:', res.data);
+            setGitHubRepos(res.data);
+            
+            // Extract and sync languages
+            if (res.data && res.data.length > 0) {
+                syncLanguagesFromGitHub();
+                setLanguagesSynced(true);
+                console.log('🎯 Languages synced from GitHub repos');
+            }
+        } catch (err: any) {
+            console.error('❌ Failed to fetch GitHub repos:', err.response?.data || err.message);
+            alert('Failed to fetch repos. Make sure you are logged in with GitHub.');
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
     // Handle Hydration for Persisted Store
     useEffect(() => {
         setIsHydrated(true);
@@ -74,10 +97,10 @@ export default function DashboardPage() {
 
     // Initial fetch of repos if linked
     useEffect(() => {
-        if (githubLinked && githubRepos.length === 0) {
+        if (githubLinked && githubRepos.length === 0 && isHydrated) {
             fetchRepos();
         }
-    }, [githubLinked]);
+    }, [githubLinked, githubRepos.length, isHydrated, setGitHubRepos]);
 
     // Don't render until hydrated to avoid flashing wrong state
     if (!isHydrated) {
@@ -87,29 +110,6 @@ export default function DashboardPage() {
             </div>
         );
     }
-
-    const fetchRepos = async () => {
-        setIsSyncing(true);
-        try {
-            const res = await axios.get('/api/github/repos');
-            setGitHubRepos(res.data);
-
-            // Automatically sync languages to resume skills
-            console.log('🎯 Auto-syncing languages to resume...');
-            setTimeout(() => {
-                syncLanguagesFromGitHub();
-                setLanguagesSynced(true);
-                console.log('✅ Languages synced to resume!');
-
-                // Hide notification after 3 seconds
-                setTimeout(() => setLanguagesSynced(false), 3000);
-            }, 500); // Small delay to ensure repos are set in state
-        } catch (err) {
-            console.error("Failed to fetch GitHub repos");
-        } finally {
-            setIsSyncing(false);
-        }
-    };
 
     const handleImportRepo = async (repo: any) => {
         setImportingId(repo.id);

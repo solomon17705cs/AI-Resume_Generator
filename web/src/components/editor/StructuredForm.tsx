@@ -10,6 +10,7 @@ import {
     ChevronDown
 } from "lucide-react";
 import { ResumeData, Experience, Project, Education } from "@/types/resume";
+import { AutocompleteInput } from "./AutocompleteInput";
 import axios from "axios";
 
 interface StructuredFormProps {
@@ -142,16 +143,26 @@ export const StructuredForm: React.FC<StructuredFormProps> = ({
                                 </button>
 
                                 <div className="grid grid-cols-2 gap-6 mb-6">
-                                    <InputField label="Company" value={exp.company} onChange={(v: string) => {
-                                        const newList = [...data.experience];
-                                        newList[idx].company = v;
-                                        setData(prev => ({ ...prev, experience: newList }));
-                                    }} />
-                                    <InputField label="Job Title" value={exp.role} onChange={(v: string) => {
-                                        const newList = [...data.experience];
-                                        newList[idx].role = v;
-                                        setData(prev => ({ ...prev, experience: newList }));
-                                    }} />
+                                    <AutocompleteInput 
+                                        label="Company" 
+                                        value={exp.company} 
+                                        category="company"
+                                        onChange={(v: string) => {
+                                            const newList = [...data.experience];
+                                            newList[idx].company = v;
+                                            setData(prev => ({ ...prev, experience: newList }));
+                                        }} 
+                                    />
+                                    <AutocompleteInput 
+                                        label="Job Title" 
+                                        value={exp.role} 
+                                        category="jobTitle"
+                                        onChange={(v: string) => {
+                                            const newList = [...data.experience];
+                                            newList[idx].role = v;
+                                            setData(prev => ({ ...prev, experience: newList }));
+                                        }} 
+                                    />
                                 </div>
 
                                 <div className="space-y-4">
@@ -280,17 +291,31 @@ const SectionHeader = ({ title, onAdd }: { title: string, onAdd?: () => void }) 
     </div>
 );
 
-const InputField = ({ label, value, onChange }: any) => (
-    <div className="space-y-3">
-        <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2">{label}</label>
-        <input
-            type="text"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-full bg-slate-900/80 border border-white/5 hover:border-white/10 rounded-2xl px-6 py-4 text-slate-200 focus:outline-none focus:border-blue-500 focus:bg-slate-900 transition-all font-medium"
-        />
-    </div>
-);
+const InputField = ({ label, value, onChange, autocompleteCategory }: any) => {
+    if (autocompleteCategory) {
+        return (
+            <AutocompleteInput
+                label={label}
+                value={value}
+                onChange={onChange}
+                category={autocompleteCategory}
+                showSuggestions={true}
+            />
+        );
+    }
+    
+    return (
+        <div className="space-y-3">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2">{label}</label>
+            <input
+                type="text"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                className="w-full bg-slate-900/80 border border-white/5 hover:border-white/10 rounded-2xl px-6 py-4 text-slate-200 focus:outline-none focus:border-blue-500 focus:bg-slate-900 transition-all font-medium"
+            />
+        </div>
+    );
+};
 
 const SkillInput = ({ label, values, onChange }: any) => {
     const [val, setVal] = useState("");

@@ -47,7 +47,7 @@ export default function EditorPage() {
         updateExperience, addExperience, removeExperience, removeProject, removeEducation, updateResume,
         githubLinked, jobDescription, jobUrl, setJobContext,
         syncLanguagesFromGitHub, syncProjectsFromGitHub, addSkillCategory, updateSkillCategoryName,
-        removeSkillCategory, githubRepos
+        removeSkillCategory, githubRepos, setGitHubRepos
     } = useResumeStore();
 
     const [activeTab, setActiveTab] = useState("personal");
@@ -60,6 +60,7 @@ export default function EditorPage() {
     const [isExporting, setIsExporting] = useState(false);
     const [isHydrated, setIsHydrated] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [isSyncingGitHub, setIsSyncingGitHub] = useState(false);
 
     // Save Status Logic
     useEffect(() => {
@@ -207,6 +208,60 @@ export default function EditorPage() {
             alert(error.response?.data?.error || "Neural Engine timed out.");
         } finally {
             setIsOptimizing(false);
+        }
+    };
+
+    const handleSyncGitHubProjects = async () => {
+        console.log('🚀 Starting GitHub project sync... Current repos:', githubRepos);
+        setIsSyncingGitHub(true);
+        try {
+            // If repos are not loaded, fetch them first
+            if (!githubRepos || githubRepos.length === 0) {
+                console.log('📡 Fetching repos from API...');
+                const res = await axios.get('/api/github/repos');
+                console.log('✅ Repos fetched:', res.data);
+                
+                // Update the store with the fetched repos
+                setGitHubRepos(res.data);
+            }
+            
+            // Now sync the projects from the repos
+            console.log('🎯 Syncing projects from repos...');
+            syncProjectsFromGitHub();
+            
+            alert('✅ GitHub projects synced! Your repositories have been added to your resume.');
+        } catch (err: any) {
+            console.error('❌ Failed to sync GitHub projects:', err);
+            alert('Failed to sync GitHub projects. Make sure you are logged in with GitHub and have repositories.');
+        } finally {
+            setIsSyncingGitHub(false);
+        }
+    };
+
+    const handleSyncGitHubSkills = async () => {
+        console.log('🚀 Starting GitHub skill sync... Current repos:', githubRepos);
+        setIsSyncingGitHub(true);
+        try {
+            // If repos are not loaded, fetch them first
+            if (!githubRepos || githubRepos.length === 0) {
+                console.log('📡 Fetching repos from API...');
+                const res = await axios.get('/api/github/repos');
+                console.log('✅ Repos fetched:', res.data);
+                
+                // Update the store with the fetched repos
+                setGitHubRepos(res.data);
+            }
+            
+            // Now sync the languages from the repos
+            console.log('🎯 Syncing languages from repos...');
+            syncLanguagesFromGitHub();
+            
+            alert('✅ GitHub skills synced! Programming languages have been added to your resume.');
+        } catch (err: any) {
+            console.error('❌ Failed to sync GitHub skills:', err);
+            alert('Failed to sync GitHub skills. Make sure you are logged in with GitHub and have repositories.');
+        } finally {
+            setIsSyncingGitHub(false);
         }
     };
 
@@ -739,11 +794,12 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                                     >
                                         {githubLinked && (
                                             <button
-                                                onClick={syncProjectsFromGitHub}
-                                                className="flex items-center gap-3 px-6 py-3 bg-slate-900/80 backdrop-blur-md border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:border-blue-500/50 transition-all group shadow-xl"
+                                                onClick={handleSyncGitHubProjects}
+                                                disabled={isSyncingGitHub}
+                                                className="flex items-center gap-3 px-6 py-3 bg-slate-900/80 backdrop-blur-md border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:border-blue-500/50 transition-all group shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
-                                                <Github size={16} className="group-hover:scale-110 transition-transform" />
-                                                GitHub sync
+                                                <Github size={16} className={`group-hover:scale-110 transition-transform ${isSyncingGitHub ? 'animate-spin' : ''}`} />
+                                                {isSyncingGitHub ? 'Syncing...' : 'GitHub sync'}
                                             </button>
                                         )}
                                     </SectionHeader>
@@ -832,11 +888,12 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                                                 </button>
                                                 {githubLinked && (
                                                     <button
-                                                        onClick={syncLanguagesFromGitHub}
-                                                        className="flex items-center gap-2 px-4 py-2 bg-slate-900 border border-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:border-blue-500/50 transition-all group"
+                                                        onClick={handleSyncGitHubSkills}
+                                                        disabled={isSyncingGitHub}
+                                                        className="flex items-center gap-2 px-4 py-2 bg-slate-900 border border-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:border-blue-500/50 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
                                                     >
-                                                        <Github size={14} className="group-hover:scale-110 transition-transform" />
-                                                        Sync from GitHub
+                                                        <Github size={14} className={`group-hover:scale-110 transition-transform ${isSyncingGitHub ? 'animate-spin' : ''}`} />
+                                                        {isSyncingGitHub ? 'Syncing...' : 'Sync from GitHub'}
                                                     </button>
                                                 )}
                                             </div>

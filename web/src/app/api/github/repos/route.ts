@@ -4,8 +4,13 @@ import axios from 'axios';
 export async function GET(req: NextRequest) {
     const accessToken = req.cookies.get('github_access_token')?.value;
 
+    console.log('🔍 [/api/github/repos] Checking for access token...');
+    console.log('📦 All cookies:', req.cookies.getAll());
+    console.log('🔑 Access token found:', !!accessToken);
+
     if (!accessToken) {
-        return NextResponse.json({ error: 'Not authenticated with GitHub' }, { status: 401 });
+        console.error('❌ No GitHub access token found in cookies');
+        return NextResponse.json({ error: 'Not authenticated with GitHub. Please login first.' }, { status: 401 });
     }
 
     try {
