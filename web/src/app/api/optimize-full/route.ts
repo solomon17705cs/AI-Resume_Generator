@@ -7,8 +7,10 @@ import {
     detectIndustry,
     calculateKeywordPriority
 } from '@/utils/optimizationEngine';
+import { getSemanticKeywordsForRole, detectRoleCategory } from '@/utils/csSemanticKeywords';
+import { determineExperienceLevel, getFresherRules } from '@/utils/userProfileAnalyzer';
 
-const API_KEY = process.env.LLAMA_API_KEY || process.env.OPENROUTER_API_KEY;
+const API_KEY = (process.env.OPENROUTER_API_KEY || process.env.LLAMA_API_KEY || '').trim();
 
 export async function POST(req: NextRequest) {
     try {
@@ -27,41 +29,64 @@ export async function POST(req: NextRequest) {
 
         const atsProfile = detectATS(jobUrl || jobDescription);
         const kwAnalysis = analyzeKeywordDensity(JSON.stringify(resume), jobDescription);
+
+        // Flatten user skills for filtering
+        const userSkills = resume.skills?.flatMap((cat: any) => cat.skills) || [];
+
         const industry = detectIndustry(jobDescription);
+        const roleCategory = detectRoleCategory(jobDescription);
+        const semanticKeywords = getSemanticKeywordsForRole(roleCategory, userSkills);
+        const expLevel = determineExperienceLevel(resume);
+        const fresherRules = getFresherRules();
+
         const targetSections = SECTION_TEMPLATES[industry] || SECTION_TEMPLATES.generic;
         const prioritizedKeywords = calculateKeywordPriority(kwAnalysis.missingCritical, jobDescription);
 
         const topHighPriority = prioritizedKeywords
             .filter(k => k.priority === 'high')
             .map(k => k.text)
+            .concat(semanticKeywords.slice(0, 5)) // Inject top semantic keywords
             .join(', ');
 
         const prompt = `
             You are an elite ATS Optimization Engine (Transformation Mode).
             Targeting a score improvement from ~20 to 90+.
 
-            [5-STEP TRANSFORMATION PLAN]
-            1. KEYWORD MATCH (40% Weight): 
-               - INTEGRATE these high-priority keywords naturally: ${topHighPriority}.
-               - Focus on missing technical terms: ${kwAnalysis.missingCritical.slice(0, 10).join(', ')}.
-            
-            2. SECTION COMPLIANCE (30% Weight):
-               - REORGANIZE the resume using these EXACT headers in order: ${targetSections.join(', ')}.
-               - Add "TECHNICAL PROJECTS" if missing and populate from existing projects.
+            [DYNAMIC KEYWORD-ADAPTATION PIPELINE]
+            1. JD KEYWORD EXTRACTION:
+               - From the Job Description, extract: Hard Skills (Languages, Frameworks, Tools), Concepts/Responsibilities, and Role Level.
+               - DO NOT use a fixed list; extract what is actually in the JD.
 
-            3. SEMANTIC RELEVANCE (20% Weight):
-               - Industry Context: ${industry.toUpperCase()}.
-               - Transform generic tasks into "Action + Metric + Tech" formulas.
-               - Example: "designed systems" -> "Engineered defence-grade digital systems for UUVs".
+            2. ROLE CLASSIFICATION:
+               - Identify if this is primarily ${roleCategory.toUpperCase()} (Backend, Frontend, Full Stack, or AI/ML).
 
-            4. CLARITY & BREVITY (10% Weight):
-               - SUMMARY: Max 40 words. High impact.
-               - BULLETS: Max 2 lines. Start with strong verbs (Orchestrated, Engineered, Spearheaded).
-               - COMPRESSION: "experienced in designing" -> "designed", "leveraging expertise" -> "via".
-            
+            3. USER SKILL VALIDATION & CROSS-MATCHING:
+               - Compare extracted JD skills with candidate skills: ${userSkills.join(', ')}.
+               - RULE: Only include keywords if the candidate has the underlying skill or it's a legitimate semantic expansion.
+               - SEMANTIC EXPANSION: You may expand "Node.js" to "server-side JavaScript environments" or "SQL" to "relational database architecture" if it helps ATS matching.
+
+            4. STRATEGIC INJECTION (ATS-SAFE):
+               - SUMMARY (20%): Place the Role Title and 3-4 top matched keywords. Max 40 words.
+               - EXPERIENCE (60%): Inject 1-2 JD-specific keywords per bullet using the XYZ formula:
+                 "Action (Strong Verb) + Plausible Metric + Technology (extracted from JD)".
+               - SKILLS (20%): Ensure a clean, categorized list (Languages, Tools, Frameworks).
+
             5. FINAL VALIDATION:
-               - Scoring logic: ${atsProfile.name}.
-               - Target Score: ${atsProfile.targetScore}+.
+               - Section headers must be: ${targetSections.join(', ')}.
+               - No Hallucination: Do not add tools the user hasn't listed or that aren't closely related concepts.
+               - CANDIDATE LEVEL: ${expLevel}. 
+               ${expLevel === 'FRESHER' ? `
+               - FRESHER RULES:
+                 1. Do NOT invent professional work experience or job titles (like "Senior Architect").
+                 2. Focus the summary on academic achievements and potential.
+                 3. If the user has no work history, expand the "TECHNICAL PROJECTS" section using the provided projects.
+                 4. Treat academic projects as the primary source of technical proof.
+               ` : `
+               - EXPERIENCED RULES:
+                 1. Focus on industry impact, leadership, and multi-year tenure.
+                 2. Use metrics that reflect business value (revenue, user growth, latency).
+               `}
+               - Tone: Professional Software Engineering.
 
             [PLATFORM CONFIGURATION: ${atsProfile.name}]
             - Optimization Strategy: ${atsProfile.optimizationStrategy.bulletStyle}
@@ -91,8 +116,21 @@ export async function POST(req: NextRequest) {
             timeout: 60000
         });
 
-        const optimizedContent = response.data.choices[0].message.content;
-        const optimizedResume = JSON.parse(optimizedContent);
+        let optimizedContent = response.data.choices[0].message.content;
+
+        // Remove potential markdown code blocks
+        optimizedContent = optimizedContent.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
+
+        let optimizedResume;
+        try {
+            optimizedResume = JSON.parse(optimizedContent);
+        } catch (parseError) {
+            console.error('Failed to parse LLM response as JSON:', optimizedContent);
+            return NextResponse.json({
+                error: 'Optimization output format error',
+                message: 'The AI returned an invalid response format.'
+            }, { status: 502 });
+        }
 
         return NextResponse.json({
             success: true,
@@ -103,8 +141,12 @@ export async function POST(req: NextRequest) {
         });
 
     } catch (error: any) {
-        console.error('Neural Optimization Error:', error.message);
-        return NextResponse.json({ error: 'Deep Optimization Engine offline' }, { status: 503 });
+        const errorMsg = error.response?.data?.error?.message || error.message;
+        console.error('Neural Optimization Error:', errorMsg);
+        return NextResponse.json({
+            error: 'Deep Optimization Engine offline',
+            details: errorMsg
+        }, { status: 503 });
     }
 }
 

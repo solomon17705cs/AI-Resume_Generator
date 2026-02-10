@@ -16,16 +16,20 @@ interface PromptContext {
     existingExperience?: any[];
     existingProjects?: any[];
     existingSkills?: any[];
+    existingEducation?: any[];
   };
+  experienceLevel?: 'FRESHER' | 'EXPERIENCED' | 'TRANSITIONING';
   atsType: ATSType;
   targetRole?: string;
+  jdIntelligence?: any;
+  expandedKeywords?: string[];
 }
 
 /**
  * Builds a strict, schema-enforcing prompt for AI resume generation
  */
 export function buildSchemaPrompt(context: PromptContext): string {
-  const { jobDescription, userData, atsType, targetRole } = context;
+  const { jobDescription, userData, atsType, targetRole, experienceLevel = 'EXPERIENCED', jdIntelligence, expandedKeywords } = context;
   const atsRules = ATSGenerationRules[atsType] || ATSGenerationRules.generic;
 
   return `You are an ATS Optimization Engine specialized in ${atsType.toUpperCase()} systems.
@@ -41,11 +45,29 @@ Target Role: ${targetRole || 'Software Engineer'}
 Candidate: ${userData.name}
 ${userData.currentRole ? `Current Role: ${userData.currentRole}` : ''}
 ${userData.yearsExperience ? `Experience: ${userData.yearsExperience} years` : ''}
+Candidate Level: ${experienceLevel}
 
 Job Description:
 """
 ${jobDescription.substring(0, 2000)}
 """
+
+${jdIntelligence ? `
+═══════════════════════════════════════════════════════════════
+🔧 STRUCTURED TECH STACK (PRIMARY TARGETS)
+═══════════════════════════════════════════════════════════════
+- Languages: ${jdIntelligence.stack.languages.join(', ')}
+- Frameworks: ${jdIntelligence.stack.frameworks.join(', ')}
+- Cloud/Platform: ${jdIntelligence.stack.cloud.join(', ')}
+- Concepts: ${jdIntelligence.stack.concepts.join(', ')}
+` : ''}
+
+${expandedKeywords && expandedKeywords.length > 0 ? `
+═══════════════════════════════════════════════════════════════
+🚀 SEMANTIC EXPANSION (SECONDARY TARGETS)
+═══════════════════════════════════════════════════════════════
+${expandedKeywords.join(', ')}
+` : ''}
 
 ═══════════════════════════════════════════════════════════════
 🎯 ATS-SPECIFIC RULES FOR ${atsType.toUpperCase()}
@@ -73,7 +95,9 @@ Date Format: ${atsRules.dateFormat}
 2. PROFESSIONAL SUMMARY:
    - Maximum 60 words
    - Third person (no "I am" or "I'm")
-   - Include: years of experience, top 3 skills, target role
+   - ${experienceLevel === 'FRESHER'
+      ? 'Focus: Education, academic foundation, technical aptitude, and eager to learn. No multi-year professional tenure.'
+      : 'Include: years of experience, top 3 skills, target role'}
    - Match job description keywords naturally
 
 3. SKILLS:
@@ -88,7 +112,15 @@ Date Format: ${atsRules.dateFormat}
    - Include GitHub link if available
    - 1-3 bullet points per project
 
-5. KEYWORD STRATEGY:
+5. ${experienceLevel === 'FRESHER' ? 'ACADEMIC PROJECTS & INTERNSHIPS' : 'PROFESSIONAL EXPERIENCE'}:
+   - ${experienceLevel === 'FRESHER'
+      ? 'Prioritize academic projects and hackathons as primary source of proof. Highlight technical implementation details and university coursework mapping.'
+      : 'Focus on business impact, leadership, and multi-year professional achievements.'}
+   - ${atsRules.requireMetrics ? 'MUST include metric (%, $, time, scale)' : 'Include metrics (e.g., "improved project efficiency by 15%")'}
+   - No vague language ("various", "multiple", "several")
+   - Do NOT invent professional work history or job titles.
+
+6. KEYWORD STRATEGY:
    - Target density: ${atsRules.keywordDensity}
    - Repeat critical skills across sections
    - Use exact phrases from job description
@@ -148,18 +180,24 @@ ${userData.existingSkills && userData.existingSkills.length > 0 ? `
 
 ${JSON.stringify(userData.existingSkills, null, 2)}
 ` : ''}
-═══════════════════════════════════════════════════════════════
-✅ QUALITY CHECKLIST (Verify before returning)
+${userData.existingEducation && userData.existingEducation.length > 0 ? `
+🎓 EXISTING EDUCATION (Prioritize for freshers)
 ═══════════════════════════════════════════════════════════════
 
-- [ ] All bullets start with action verbs
-- [ ] All bullets ≤ ${atsRules.maxBulletWords} words
-- [ ] ${atsRules.requireMetrics ? 'Every bullet has a metric' : 'Metrics included where possible'}
-- [ ] Summary is ≤ 60 words and third person
-- [ ] Skills extracted from job description only
-- [ ] No invented technologies or skills
-- [ ] Keywords naturally integrated (density: ${atsRules.keywordDensity})
-- [ ] Valid JSON format (no syntax errors)
+${JSON.stringify(userData.existingEducation, null, 2)}
+` : ''}
+═══════════════════════════════════════════════════════════════
+✅ QUALITY CHECKLIST(Verify before returning)
+═══════════════════════════════════════════════════════════════
+
+-[] All bullets start with action verbs
+  - [] All bullets ≤ ${atsRules.maxBulletWords} words
+    - [] ${atsRules.requireMetrics ? 'Every bullet has a metric' : 'Metrics included where possible'}
+-[] Summary is ≤ 60 words and third person
+  - [] Skills extracted from job description only
+    - [] No invented technologies or skills
+      - [] Keywords naturally integrated(density: ${atsRules.keywordDensity})
+        - [] Valid JSON format(no syntax errors)
 
 ═══════════════════════════════════════════════════════════════
 🎯 OUTPUT INSTRUCTIONS
@@ -169,7 +207,7 @@ Return ONLY valid JSON matching the schema above.
 Do NOT include any explanation, markdown, or additional text.
 The response must be parseable by JSON.parse().
 
-BEGIN JSON OUTPUT:`;
+BEGIN JSON OUTPUT: `;
 }
 
 /**
@@ -184,7 +222,7 @@ export function buildBulletOptimizationPrompt(
 
   return `You are an ATS Bullet Optimization Engine for ${atsType.toUpperCase()}.
 
-TASK: Rewrite this bullet point to maximize ATS compatibility.
+  TASK: Rewrite this bullet point to maximize ATS compatibility.
 
 Original Bullet:
 "${bullet}"
@@ -194,8 +232,8 @@ Job Description Context:
 ${jobDescription.substring(0, 1500)}
 """
 
-ATS-Specific Rules for ${atsType.toUpperCase()}:
-- Bullet Style: ${atsRules.bulletStyle}
+ATS - Specific Rules for ${atsType.toUpperCase()}:
+  - Bullet Style: ${atsRules.bulletStyle}
 - Max Words: ${atsRules.maxBulletWords}
 - Metrics Required: ${atsRules.requireMetrics ? 'YES' : 'NO'}
 
@@ -204,15 +242,15 @@ Constraints:
 2. Maximum ${atsRules.maxBulletWords} words
 3. ${atsRules.requireMetrics ? 'MUST include metric (%, $, time, scale)' : 'Include metric if possible'}
 4. Use keywords from job description
-5. Be specific (no "various", "multiple", "several")
+5. Be specific(no "various", "multiple", "several")
 6. Do NOT invent skills or technologies
 
-Output Format (JSON):
+Output Format(JSON):
 {
   "optimizedBullet": "string (the rewritten bullet)",
-  "changes": ["string (what was improved)", "string", ...],
-  "keywords": ["string (keywords added)", "string", ...],
-  "metric": "string (the metric added/improved, or 'none')"
+    "changes": ["string (what was improved)", "string", ...],
+      "keywords": ["string (keywords added)", "string", ...],
+        "metric": "string (the metric added/improved, or 'none')"
 }
 
 Return ONLY valid JSON.`;
@@ -230,7 +268,7 @@ export function buildSummaryPrompt(
 
   return `You are a Professional Summary Generator for ${atsType.toUpperCase()} ATS.
 
-TASK: Generate a compelling professional summary (max 60 words).
+  TASK: Generate a compelling professional summary(max 60 words).
 
 Candidate Info:
 - Name: ${userData.name}
@@ -244,16 +282,16 @@ ${jobDescription.substring(0, 1500)}
 
 Requirements:
 1. Maximum 60 words
-2. Third person (no "I am" or "I'm")
+2. Third person(no "I am" or "I'm")
 3. Include: years of experience, top 3 skills, target role
 4. Match job description keywords naturally
 5. Keyword density: ${atsRules.keywordDensity}
 
-Output Format (JSON):
+Output Format(JSON):
 {
   "summary": "string (the professional summary)",
-  "keywords": ["string (keywords included)", "string", ...],
-  "wordCount": number
+    "keywords": ["string (keywords included)", "string", ...],
+      "wordCount": number
 }
 
 Return ONLY valid JSON.`;
@@ -268,7 +306,7 @@ export function buildSkillExtractionPrompt(
 ): string {
   return `You are a Skill Extraction Engine for ${atsType.toUpperCase()} ATS.
 
-TASK: Extract and categorize skills from this job description.
+  TASK: Extract and categorize skills from this job description.
 
 Job Description:
 """
@@ -278,11 +316,11 @@ ${jobDescription}
 Requirements:
 1. Extract ONLY skills explicitly mentioned in the job description
 2. Categorize into: Languages, Frameworks, Tools, Methods, Domains
-3. Include variants (e.g., JS, JavaScript, Node.js)
+3. Include variants(e.g., JS, JavaScript, Node.js)
 4. Minimum 3 skills per category
-5. No generic terms ("good communication", "team player")
+5. No generic terms("good communication", "team player")
 
-Output Format (JSON):
+Output Format(JSON):
 {
   "skills": [
     {

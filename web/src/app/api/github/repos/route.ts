@@ -5,7 +5,7 @@ export async function GET(req: NextRequest) {
     const accessToken = req.cookies.get('github_access_token')?.value;
 
     if (!accessToken) {
-        return NextResponse.json({ error: 'Not authenticated with GitHub' }, { status: 401 });
+        return NextResponse.json([], { status: 200 });
     }
 
     try {

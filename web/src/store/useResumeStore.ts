@@ -43,6 +43,7 @@ interface ResumeState {
     // Recommendation Flow
     requestRecommendation: (details: Pick<RecommendationRequest, 'purpose' | 'company' | 'message'>) => void;
     updateRecommendationStatus: (id: string, status: 'Approved' | 'Rejected', letter?: string) => void;
+    resetResume: () => void;
 }
 
 const DEFAULT_RESUME: ResumeData = {
@@ -58,39 +59,40 @@ const DEFAULT_RESUME: ResumeData = {
         github: '',
         website: '',
     },
-    summary: 'Senior Software Engineer with 8+ years of experience in distributed systems and AI orchestration.',
+    summary: '',
     experience: [
         {
             id: 'exp-1',
-            company: 'Tech Corp',
-            role: 'Lead Architect',
-            location: 'San Francisco, CA',
-            startDate: '2020-01',
-            endDate: 'Present',
-            isCurrent: true,
-            bullets: ['Led development of a high-frequency trading platform handling $1B+ daily volume.']
+            company: '',
+            role: '',
+            location: '',
+            startDate: '',
+            endDate: '',
+            isCurrent: false,
+            bullets: ['']
         }
     ],
     projects: [
         {
             id: 'proj-1',
-            name: 'ATSense AI',
-            description: 'AI-powered resume optimization engine.',
-            technologies: ['Next.js', 'FastAPI', 'spaCy'],
-            link: 'github.com/solomon/atsense',
-            bullets: ['Engineered a vector-similarity match engine reducing candidate screening time by 70%.']
+            name: '',
+            description: '',
+            technologies: [],
+            link: '',
+            bullets: ['']
         }
     ],
     skills: [
-        { id: '1', name: 'Languages', skills: [] }
+        { id: '1', name: 'Languages', skills: [] },
+        { id: '2', name: 'Frameworks', skills: [] }
     ],
     education: [
         {
             id: 'edu-1',
-            institution: 'Stanford University',
-            degree: 'M.S. in Computer Science',
-            location: 'Stanford, CA',
-            graduationDate: '2019'
+            institution: '',
+            degree: '',
+            location: '',
+            graduationDate: ''
         }
     ],
     metadata: {}
@@ -113,9 +115,11 @@ export const useResumeStore = create<ResumeState>()(
 
             setUserRole: (role) => set({ userRole: role }),
 
-            updateResume: (updates: Partial<ResumeData>) => set((state) => ({
-                resume: { ...state.resume, ...updates, lastModified: new Date().toISOString() }
-            })),
+            updateResume: (updates: Partial<ResumeData>) => set((state) => {
+                const newResume = { ...state.resume, ...updates, lastModified: new Date().toISOString() };
+                return { resume: newResume };
+            }),
+            resetResume: () => set(() => ({ resume: DEFAULT_RESUME })),
 
             setAnalysis: (analysis: ATSAnalysis) => set({ analysis }),
 

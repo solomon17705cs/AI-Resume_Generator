@@ -20,8 +20,30 @@ import {
 import Link from "next/link";
 import { useResumeStore } from "@/store/useResumeStore";
 import { useRouter } from "next/navigation";
-import { LogoutButton } from "@/components/layout/LogoutButton";
+import { Sidebar } from "@/components/layout/Sidebar";
 import axios from "axios";
+import { Github } from "lucide-react";
+
+const POPULAR_ROLES = [
+    { title: "AI Engineering Manager", salary: "$160k - $220k", demand: "Extremely High", icon: <Sparkles size={20} className="text-purple-400" /> },
+    { title: "Cloud Solutions Architect", salary: "$140k - $190k", demand: "High", icon: <Target size={20} className="text-blue-400" /> },
+    { title: "Full Stack Developer", salary: "$110k - $160k", demand: "High", icon: <CheckCircle2 size={20} className="text-emerald-400" /> },
+    { title: "DevOps Engineer", salary: "$120k - $175k", demand: "Very High", icon: <Zap size={20} className="text-yellow-400" /> },
+];
+
+const LinkedinIcon = ({ size }: { size: number }) => (
+    <svg
+        width={size} height={size}
+        viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" strokeWidth="2"
+        strokeLinecap="round" strokeLinejoin="round"
+        className="text-[#0077b5]"
+    >
+        <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
+        <rect x="2" y="9" width="4" height="12" />
+        <circle cx="4" cy="4" r="2" />
+    </svg>
+);
 
 interface JobSuggestion {
     role: string;
@@ -68,40 +90,21 @@ export default function JobSuggestionsPage() {
         }
     };
 
+    const hasSkills = resume.skills.some(cat => cat.skills.length > 0);
+    const isResumeEmpty = !resume.experience.length && !resume.projects.length && !hasSkills && !resume.summary;
+
     useEffect(() => {
-        if (isHydrated && resume.skills.length > 0) {
+        if (isHydrated && !isResumeEmpty) {
             fetchSuggestions();
         }
-    }, [isHydrated]);
+    }, [isHydrated, isResumeEmpty]);
 
     if (!isHydrated) return null;
 
     return (
         <div className="h-screen bg-slate-950 text-slate-100 flex font-sans overflow-hidden">
             {/* SaaS Sidebar */}
-            <aside className="w-64 border-r border-white/5 flex flex-col glass-dark shrink-0 h-full">
-                <div className="p-6 flex flex-col h-full">
-                    <div className="flex items-center gap-2 mb-12">
-                        <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-                            <Zap className="text-white fill-white" size={16} />
-                        </div>
-                        <span className="text-xl font-black font-display tracking-tighter">ATSense</span>
-                    </div>
-
-                    <nav className="flex-1 space-y-2">
-                        <SidebarItem href="/dashboard" icon={<LayoutDashboard size={18} />} label="Overview" />
-                        <SidebarItem href="/resumes" icon={<FileText size={18} />} label="My Resumes" />
-                        <SidebarItem href="/analysis" icon={<Target size={18} />} label="Job Analyzer" />
-                        <SidebarItem href="/jobs" icon={<Compass size={18} />} label="Pathfinder" active />
-                        <SidebarItem href="/recommendations" icon={<ShieldCheck size={18} />} label="Recommendations" />
-                        <SidebarItem href="/profile" icon={<User size={18} />} label="Profile" />
-                    </nav>
-
-                    <div className="mt-auto pt-6 border-t border-white/5">
-                        <LogoutButton />
-                    </div>
-                </div>
-            </aside>
+            <Sidebar />
 
             {/* Main Content */}
             <main className="flex-1 overflow-y-auto p-12 relative custom-scrollbar">
@@ -140,14 +143,63 @@ export default function JobSuggestionsPage() {
                                 <p className="text-slate-500 text-sm animate-pulse">Running forensic match analysis against market demand...</p>
                             </div>
                         </div>
-                    ) : error ? (
-                        <div className="py-20 glass-dark border border-red-500/20 rounded-[40px] flex flex-col items-center justify-center text-center space-y-6">
-                            <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500">
-                                <TrendingUp className="rotate-180" size={32} />
+                    ) : isResumeEmpty ? (
+                        <div className="space-y-16 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+                            {/* Empty State / Connection Prompt */}
+                            <div className="p-16 glass-dark border border-white/5 rounded-[60px] text-center space-y-10 relative overflow-hidden">
+                                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-blue-600/10 blur-[100px] -z-10 rounded-full" />
+
+                                <div className="space-y-4">
+                                    <div className="w-20 h-20 bg-white/5 rounded-3xl flex items-center justify-center mx-auto text-blue-500 mb-6">
+                                        <Compass size={40} className="animate-spin-slow" />
+                                    </div>
+                                    <h3 className="text-4xl font-black font-display tracking-tight">Connect Your Technical DNA</h3>
+                                    <p className="text-slate-500 max-w-lg mx-auto font-medium text-lg leading-relaxed">
+                                        Our AI engine requires your technical background to map your career trajectory.
+                                        Sync your profiles to unlock deep-layer role analysis.
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-wrap justify-center gap-6">
+                                    <button
+                                        onClick={() => window.location.href = '/api/auth/github'}
+                                        className="flex items-center gap-3 px-10 py-5 bg-[#24292e] text-white rounded-[24px] font-black text-sm hover:scale-105 transition-all shadow-xl active:scale-95 border border-white/5"
+                                    >
+                                        <Github size={20} /> Sync GitHub Repos
+                                    </button>
+                                    <button
+                                        onClick={() => window.location.href = '/api/auth/linkedin'}
+                                        className="flex items-center gap-3 px-10 py-5 bg-white text-slate-950 rounded-[24px] font-black text-sm hover:scale-105 transition-all shadow-xl active:scale-95"
+                                    >
+                                        <LinkedinIcon size={20} /> Import LinkedIn Profile
+                                    </button>
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <h3 className="text-xl font-bold text-red-400">Analysis Halted</h3>
-                                <p className="text-sm text-slate-500 max-w-sm mx-auto">{error}</p>
+
+                            {/* Popular Jobs Section */}
+                            <div className="space-y-8">
+                                <div className="flex items-center gap-4">
+                                    <TrendingUp className="text-blue-500" />
+                                    <h3 className="text-2xl font-black font-display tracking-tight">Market Demand Snapshot</h3>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                    {POPULAR_ROLES.map((role, i) => (
+                                        <div key={i} className="p-8 bg-white/5 border border-white/5 rounded-[40px] space-y-6 hover:bg-white/[0.07] transition-all group">
+                                            <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center">
+                                                {role.icon}
+                                            </div>
+                                            <div className="space-y-1">
+                                                <h4 className="font-black text-lg leading-tight uppercase group-hover:text-blue-400 transition-colors">{role.title}</h4>
+                                                <p className="text-emerald-400 font-bold text-xs">{role.salary}</p>
+                                            </div>
+                                            <div className="pt-4 border-t border-white/5 flex items-center justify-between">
+                                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{role.demand} Demand</span>
+                                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     ) : (
@@ -237,14 +289,16 @@ export default function JobSuggestionsPage() {
                 .custom-scrollbar::-webkit-scrollbar { width: 4px; }
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
                 .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.05); border-radius: 10px; }
+                
+                @keyframes spin-slow {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+                .animate-spin-slow {
+                    animation: spin-slow 12s linear infinite;
+                }
             `}</style>
         </div>
     );
 }
 
-const SidebarItem = ({ icon, label, active = false, href }: any) => (
-    <Link href={href || "#"} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${active ? 'bg-blue-600/10 text-blue-400' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'}`}>
-        {icon}
-        {label}
-    </Link>
-);

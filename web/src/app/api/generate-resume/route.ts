@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 import { buildSchemaPrompt } from '@/utils/promptBuilder';
 import { validateAIResume, ATSType } from '@/types/resumeSchema';
+import { determineExperienceLevel } from '@/utils/userProfileAnalyzer';
+import { performControlledExpansion } from '@/utils/jdIntelligence';
+import { ResumeData } from '@/types/resume';
 
 const API_KEY = (process.env.LLAMA_API_KEY || process.env.OPENROUTER_API_KEY || '').trim();
 
@@ -36,7 +39,88 @@ export async function POST(req: NextRequest) {
             }, { status: 500 });
         }
 
-        // Build schema-enforcing prompt
+        // 2. Structured JD Intelligence Layer (Role-First Architecture)
+        let jdIntelligence = {
+            role: target_role || "Software Engineer",
+            domain: "Full Stack Engineer",
+            stack: { languages: [], frameworks: [], databases: [], cloud: [], tools: [], concepts: [] },
+            seniority: "Mid",
+            industry: "Tech"
+        };
+
+        if (API_KEY && API_KEY !== 'your_key_here') {
+            try {
+                const extractionPrompt = `
+                    Extract the primary technical elements from this job description.
+                    Ignore general phrases, soft skills, and marketing fluff.
+
+                    [TARGET DOMAINS]: Frontend Engineer, Backend Engineer, Full Stack Engineer, DevOps Engineer, ML Engineer, Data Engineer.
+
+                    JOB DESCRIPTION:
+                    "${job_description.substring(0, 2000)}"
+
+                    OUTPUT JSON SCHEMA:
+                    {
+                      "role": "Specific Job Title",
+                      "domain": "One of the [TARGET DOMAINS]",
+                      "languages": [],
+                      "frameworks": [],
+                      "databases": [],
+                      "cloud_platform": [],
+                      "tools": [],
+                      "concepts": ["Strictly technical like 'Microservices', 'REST APIs'"],
+                      "seniority": "Junior/Mid/Senior/Lead"
+                    }
+                `;
+
+                const extractionRes = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
+                    model: 'meta-llama/llama-3.3-70b-instruct',
+                    messages: [{ role: 'user', content: extractionPrompt }],
+                    response_format: { type: 'json_object' }
+                }, {
+                    headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' }
+                });
+
+                const rawIntel = JSON.parse(extractionRes.data.choices[0].message.content);
+                jdIntelligence = {
+                    role: rawIntel.role || target_role || "Software Engineer",
+                    domain: rawIntel.domain || "Full Stack Engineer",
+                    stack: {
+                        languages: rawIntel.languages || [],
+                        frameworks: rawIntel.frameworks || [],
+                        databases: rawIntel.databases || [],
+                        cloud: rawIntel.cloud_platform || [],
+                        tools: rawIntel.tools || [],
+                        concepts: rawIntel.concepts || []
+                    },
+                    seniority: rawIntel.seniority || "Mid",
+                    industry: "Tech"
+                };
+            } catch (err) {
+                console.error("Structured Extraction failed during generation:", err);
+            }
+        }
+
+        // 3. Controlled Semantic Expansion
+        const allStackElements = [
+            ...jdIntelligence.stack.languages,
+            ...jdIntelligence.stack.frameworks,
+            ...jdIntelligence.stack.databases,
+            ...jdIntelligence.stack.cloud,
+            ...jdIntelligence.stack.tools,
+            ...jdIntelligence.stack.concepts
+        ];
+
+        const expandedKeywords = performControlledExpansion(allStackElements, jdIntelligence.domain);
+
+        // 4. Determine experience level
+        const experienceLevel = determineExperienceLevel({
+            experience: user_data.existing_experience || [],
+            education: user_data.existing_education || [],
+            projects: user_data.existing_projects || []
+        } as any);
+
+        // 5. Build schema-enforcing prompt
         const prompt = buildSchemaPrompt({
             jobDescription: job_description,
             userData: {
@@ -45,10 +129,14 @@ export async function POST(req: NextRequest) {
                 yearsExperience: user_data.years_experience,
                 existingExperience: user_data.existing_experience,
                 existingProjects: user_data.existing_projects,
-                existingSkills: user_data.existing_skills
+                existingSkills: user_data.existing_skills,
+                existingEducation: user_data.existing_education
             },
+            experienceLevel,
             atsType: ats_type as ATSType,
-            targetRole: target_role
+            targetRole: jdIntelligence.role,
+            jdIntelligence, // Pass structured data
+            expandedKeywords // Pass expanded keywords
         });
 
         console.log('🎯 Generating schema-based resume for ATS:', ats_type);

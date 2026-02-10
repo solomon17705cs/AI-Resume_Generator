@@ -1,13 +1,15 @@
 import { normalizeJobDescription } from './textNormalization';
 import { extractFullStackKeywords } from './fullStackKeywords';
 
-export const analyzeKeywordDensity = (resumeText: string, jobDescription: string) => {
+export const analyzeKeywordDensity = (resumeText: string, jobDescription: string, customKeywords?: string[]) => {
     // 1. Normalize JD to remove noise and fix artifacts
     const normalizedJD = normalizeJobDescription(jobDescription);
     const resumeTextNormalized = resumeText.toLowerCase();
 
     // 2. Perform Context-Aware Extraction
-    const extracted = extractFullStackKeywords(normalizedJD);
+    const extracted = customKeywords
+        ? customKeywords.map(k => ({ keyword: k, category: 'technical', confidence: 1, context: '' }))
+        : extractFullStackKeywords(normalizedJD);
     const sortedKeywords = Array.from(new Set(extracted.map(e => e.keyword)));
 
     // 3. Count occurrences in resume

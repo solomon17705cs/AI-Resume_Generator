@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 import { detectATSWithConfidence } from '@/config/atsProfiles';
 import { analyzeKeywordDensity } from '@/utils/keywordAnalyzer';
+import { performControlledExpansion, getIndustryInjection } from '@/utils/jdIntelligence';
 
 const PYTHON_API_URL = process.env.PYTHON_API_URL || 'http://localhost:8001';
-const API_KEY = process.env.LLAMA_API_KEY || process.env.OPENROUTER_API_KEY;
+const API_KEY = (process.env.OPENROUTER_API_KEY || process.env.LLAMA_API_KEY || '').trim();
 
 export async function POST(req: NextRequest) {
     try {
@@ -29,42 +30,124 @@ export async function POST(req: NextRequest) {
         });
 
         // 3. New Robust Keyword Density Analysis
-        const kwAnalysis = analyzeKeywordDensity(resume_text, job_description);
 
-        // 4. Strategic Intelligence from Llama (Contextual Reasoning)
+        // 4. Structured JD Intelligence Layer (Role-First Architecture)
+        let jdIntelligence = {
+            role: "Software Engineer",
+            domain: "Full Stack Engineer",
+            stack: { languages: [], frameworks: [], databases: [], cloud: [], tools: [], concepts: [] },
+            seniority: "Mid",
+            industry: industry || "Tech"
+        };
+
+        if (API_KEY && API_KEY !== 'your_key_here') {
+            try {
+                const extractionPrompt = `
+                    Extract the primary technical elements from this job description.
+                    Ignore general phrases, soft skills, and marketing fluff.
+
+                    [TARGET DOMAINS]: Frontend Engineer, Backend Engineer, Full Stack Engineer, DevOps Engineer, ML Engineer, Data Engineer.
+
+                    JOB DESCRIPTION:
+                    "${job_description.substring(0, 2000)}"
+
+                    OUTPUT JSON SCHEMA:
+                    {
+                      "role": "Specific Job Title",
+                      "domain": "One of the [TARGET DOMAINS]",
+                      "languages": [],
+                      "frameworks": [],
+                      "databases": [],
+                      "cloud_platform": [],
+                      "tools": [],
+                      "concepts": ["Strictly technical like 'Microservices', 'REST APIs'"],
+                      "seniority": "Junior/Mid/Senior/Lead"
+                    }
+                `;
+
+                const extractionRes = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
+                    model: 'meta-llama/llama-3.3-70b-instruct',
+                    messages: [{ role: 'user', content: extractionPrompt }],
+                    response_format: { type: 'json_object' }
+                }, {
+                    headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' }
+                });
+
+                const rawIntel = JSON.parse(extractionRes.data.choices[0].message.content);
+                jdIntelligence = {
+                    role: rawIntel.role || "Software Engineer",
+                    domain: rawIntel.domain || "Full Stack Engineer",
+                    stack: {
+                        languages: rawIntel.languages || [],
+                        frameworks: rawIntel.frameworks || [],
+                        databases: rawIntel.databases || [],
+                        cloud: rawIntel.cloud_platform || [],
+                        tools: rawIntel.tools || [],
+                        concepts: rawIntel.concepts || []
+                    },
+                    seniority: rawIntel.seniority || "Mid",
+                    industry: industry || "Tech"
+                };
+            } catch (err) {
+                console.error("Structured Extraction failed:", err);
+            }
+        }
+
+        // 5. Controlled Semantic Expansion
+        const allStackElements = [
+            ...jdIntelligence.stack.languages,
+            ...jdIntelligence.stack.frameworks,
+            ...jdIntelligence.stack.databases,
+            ...jdIntelligence.stack.cloud,
+            ...jdIntelligence.stack.tools,
+            ...jdIntelligence.stack.concepts
+        ];
+
+        const expandedKeywords = performControlledExpansion(allStackElements, jdIntelligence.domain);
+        const industryKeywords = getIndustryInjection(jdIntelligence.industry);
+
+        // 5. Final Accurate Keyword Density Analysis (Using Expanded Intelligence)
+        const kwAnalysis = analyzeKeywordDensity(resume_text, job_description, expandedKeywords);
+
+        // 6. Strategic Intelligence from Llama (Contextual Reasoning)
         let aiReasoning = pyResponse.data.reasoning;
-        let aiSuggestions = kwAnalysis.recommendations; // Start with robust rule-based suggestions
+        let aiSuggestions = kwAnalysis.recommendations;
 
         if (API_KEY && API_KEY !== 'your_key_here') {
             try {
                 const aiPrompt = `
-                    You are an expert Recruitment Strategist and ATS Specialist.
+                    You are an expert Recruitment Strategist specializing in ${jdIntelligence.domain}.
                     
-                    TASK: Analyze the alignment between this resume and the job description.
+                    TASK: Analyze resume alignment for a ${jdIntelligence.seniority} level ${jdIntelligence.role} in the ${jdIntelligence.industry} industry.
                     
-                    [STRICT SEMANTIC RULES]
-                    1. NO BRANDING: Remove all company names (e.g., "Planys"), locations, and marketing fluff from keyword lists.
-                    2. QUALITY PHRASES: Focus on Skill, System, or Responsibility-based noun phrases (e.g., "unmanned systems" NOT "planys integrates").
-                    3. CLEANLINESS: Discard broken or non-professional word salad (e.g., "brief planys").
+                    [STRUCTURED TECH STACK]
+                    - Languages: ${jdIntelligence.stack.languages.join(', ')}
+                    - Frameworks: ${jdIntelligence.stack.frameworks.join(', ')}
+                    - Cloud/Platform: ${jdIntelligence.stack.cloud.join(', ')}
+                    - Concepts/Architecture: ${jdIntelligence.stack.concepts.join(', ')}
+                    
+                    [SEMANTIC EXPANSION]
+                    ${expandedKeywords.join(', ')}
+                    
+                    [INDUSTRY CONTEXT]
+                    ${industryKeywords.join(', ')}
 
-                    CONTEXT:
-                    - ATS System: ${atsProfile.name} (Confidence: ${atsDetection.confidence})
-                    - Detection Method: ${atsDetection.detectionMethod}
-                    - Target Score: ${atsProfile.targetScore}%
-                    - Current Score: ${pyResponse.data.score}%
-                    - Detected Keywords: ${pyResponse.data.found_keywords.join(', ')}
-                    - Current Keyword Density: ${kwAnalysis.density.toFixed(2)}%
-                    - ATS Optimization Strategy: ${atsProfile.optimizationStrategy.bulletStyle}
+                    [STRICT RULES]
+                    1. NO HALLUCINATION: Only suggest words linked to the structured stack or expansion.
+                    2. SENIORITY ALIGNMENT: Suggest ${jdIntelligence.seniority === 'Senior' || jdIntelligence.seniority === 'Lead' ? '"Architected" or "Led"' : '"Developed" or "Implemented"'} style bullets.
+                    3. INDUSTRY AWARENESS: Inject ${jdIntelligence.industry}-specific relevance.
+
+                    ATS System: ${atsProfile.name}
                     
                     JOB DESCRIPTION:
-                    "${job_description.substring(0, 3000)}"
+            "${job_description.substring(0, 2000)}"
                     
                     RESUME TEXT:
-                    "${resume_text.substring(0, 3000)}"
+            "${resume_text.substring(0, 2000)}"
                     
-                    OUTPUT REQUIREMENTS (JSON):
-                    1. "reasoning": Provide a 2-sentence strategic insight. Explain WHY the current match score is what it is and how it relates to ${atsProfile.name}'s parsing behavior.
-                    2. "additionalSuggestions": Provide 4 high-impact ATS-specific suggestions. MUST have "type" (critical, warning, info) and "message". Focus on ${atsProfile.name}-specific optimizations and semantic relevance gaps.
+                    OUTPUT REQUIREMENTS(JSON):
+            1. "reasoning": Provide a strategic insight based on these keywords.
+                    2. "additionalSuggestions": Provide 4 high - impact ATS - specific suggestions.
                     
                     Return ONLY a valid JSON object.
                 `;
@@ -75,7 +158,7 @@ export async function POST(req: NextRequest) {
                     response_format: { type: 'json_object' }
                 }, {
                     headers: {
-                        'Authorization': `Bearer ${API_KEY}`,
+                        'Authorization': `Bearer ${API_KEY} `,
                         'Content-Type': 'application/json',
                         'HTTP-Referer': 'https://atsense.ai',
                         'X-Title': 'ATSense Strategic Analysis'
@@ -96,6 +179,7 @@ export async function POST(req: NextRequest) {
             ...pyResponse.data,
             reasoning: aiReasoning,
             suggestions: aiSuggestions,
+            jd_intelligence: jdIntelligence, // Pass back to frontend
             ats_type: atsProfile.name,
             ats_profile: {
                 id: atsProfile.id,
@@ -103,7 +187,7 @@ export async function POST(req: NextRequest) {
                 description: atsProfile.description,
                 rules: atsProfile.rules,
                 targetScore: atsProfile.targetScore,
-                commonCompanies: atsProfile.commonCompanies.slice(0, 8), // Show top 8 companies
+                commonCompanies: atsProfile.commonCompanies.slice(0, 8),
                 companyTraits: atsProfile.companyTraits,
                 optimizationStrategy: atsProfile.optimizationStrategy
             },
@@ -115,7 +199,7 @@ export async function POST(req: NextRequest) {
             keyword_metrics: pyResponse.data.keyword_metrics,
             match_forensics: {
                 ...pyResponse.data.match_forensics,
-                keyword_density: kwAnalysis.density // Use our more accurate density
+                keyword_density: kwAnalysis.density
             }
         });
 

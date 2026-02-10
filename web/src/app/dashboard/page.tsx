@@ -25,7 +25,7 @@ import Link from "next/link";
 import { useResumeStore } from "@/store/useResumeStore";
 import axios from "axios";
 import { useRouter } from "next/navigation";
-import { LogoutButton } from "@/components/layout/LogoutButton";
+import { Sidebar } from "@/components/layout/Sidebar";
 
 export default function DashboardPage() {
     const router = useRouter();
@@ -72,22 +72,6 @@ export default function DashboardPage() {
         }
     }, [setGitHubStatus]);
 
-    // Initial fetch of repos if linked
-    useEffect(() => {
-        if (githubLinked && githubRepos.length === 0) {
-            fetchRepos();
-        }
-    }, [githubLinked]);
-
-    // Don't render until hydrated to avoid flashing wrong state
-    if (!isHydrated) {
-        return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-            </div>
-        );
-    }
-
     const fetchRepos = async () => {
         setIsSyncing(true);
         try {
@@ -105,7 +89,7 @@ export default function DashboardPage() {
                 setTimeout(() => setLanguagesSynced(false), 3000);
             }, 500); // Small delay to ensure repos are set in state
         } catch (err) {
-            console.error("Failed to fetch GitHub repos");
+            console.log("GitHub sync skipped or failed (unauthenticated)");
         } finally {
             setIsSyncing(false);
         }
@@ -133,38 +117,33 @@ export default function DashboardPage() {
 
             updateResume({ projects: [...resume.projects, newProject] });
         } catch (err) {
-            console.error("AI import failed, using fallback");
+            console.warn("AI optimization failed, using basic import fallback");
         } finally {
             setImportingId(null);
         }
     };
 
+
+    // Initial fetch of repos if linked
+    useEffect(() => {
+        if (githubLinked && githubRepos.length === 0) {
+            fetchRepos();
+        }
+    }, [githubLinked]);
+
+    // Don't render until hydrated to avoid flashing wrong state
+    if (!isHydrated) {
+        return (
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            </div>
+        );
+    }
+
     return (
         <div className="h-screen bg-slate-950 text-slate-100 flex font-sans overflow-hidden">
             {/* SaaS Sidebar */}
-            <aside className="w-64 border-r border-white/5 flex flex-col glass-dark shrink-0 h-full">
-                <div className="p-6 flex flex-col h-full">
-                    <div className="flex items-center gap-2 mb-12">
-                        <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-                            <Zap className="text-white fill-white" size={16} />
-                        </div>
-                        <span className="text-xl font-black font-display tracking-tighter">ATSense</span>
-                    </div>
-
-                    <nav className="flex-1 space-y-2">
-                        <SidebarItem href="/dashboard" icon={<LayoutDashboard size={18} />} label="Overview" active={true} />
-                        <SidebarItem href="/resumes" icon={<FileText size={18} />} label="My Resumes" />
-                        <SidebarItem href="/analysis" icon={<Target size={18} />} label="Job Analyzer" />
-                        <SidebarItem href="/jobs" icon={<Compass size={18} />} label="Pathfinder" />
-                        <SidebarItem href="/recommendations" icon={<ShieldCheck size={18} />} label="Recommendations" />
-                    </nav>
-
-                    <div className="mt-auto pt-6 border-t border-white/5 space-y-2">
-                        <SidebarItem href="/profile" icon={<User size={18} />} label="Profile" />
-                        <LogoutButton />
-                    </div>
-                </div>
-            </aside>
+            <Sidebar />
 
             {/* Main Content */}
             <main className="flex-1 overflow-y-auto p-12 relative custom-scrollbar">
@@ -375,12 +354,6 @@ const getLanguageColor = (language: string) => {
     return colors[language] || colors["Default"];
 };
 
-const SidebarItem = ({ icon, label, active = false, href }: any) => (
-    <Link href={href || "#"} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${active ? 'bg-blue-600/10 text-blue-400' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'}`}>
-        {icon}
-        {label}
-    </Link>
-);
 
 const PermissionDiagnostic = () => {
     const [status, setStatus] = useState<any>(null);
@@ -389,17 +362,10 @@ const PermissionDiagnostic = () => {
         const check = async () => {
             try {
                 const res = await axios.get('/api/debug/token-scopes');
-                console.log('🔍 Token Scope Diagnostic:', res.data);
                 setStatus(res.data);
-
-                if (!res.data.isFullyAuthorized) {
-                    console.warn('⚠️ MISSING SCOPES:', res.data.missingScopes);
-                    console.log('✅ Current Scopes:', res.data.grantedScopes);
-                } else {
-                    console.log('✅ All required scopes granted!');
-                }
             } catch (e) {
-                console.error("❌ Diagnostic failed:", e);
+                // Background diagnostic errors should not be noisy
+                console.log("Diagnostic background check skipped (offline/unauthenticated)");
             }
         };
         check();
@@ -407,22 +373,30 @@ const PermissionDiagnostic = () => {
 
     if (!status || status.isFullyAuthorized) return null;
 
+    const isExpired = !status.isAuthenticated;
+
     return (
-        <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2">
+        <div className={`p-4 ${isExpired ? 'bg-red-500/10 border-red-500/20' : 'bg-yellow-500/10 border-yellow-500/20'} border rounded-2xl flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2`}>
             <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-yellow-500/20 rounded-lg flex items-center justify-center text-yellow-500">
+                <div className={`w-8 h-8 ${isExpired ? 'bg-red-500/20 text-red-500' : 'bg-yellow-500/20 text-yellow-500'} rounded-lg flex items-center justify-center`}>
                     <ShieldCheck size={18} />
                 </div>
                 <div>
-                    <h5 className="text-[10px] font-black uppercase tracking-widest text-yellow-500">Limited Permissions Detected</h5>
-                    <p className="text-[10px] text-slate-400 font-medium">To see repository languages, we need "Repo" access. Your current token only has: {status.grantedScopes.join(', ')}</p>
+                    <h5 className={`text-[10px] font-black uppercase tracking-widest ${isExpired ? 'text-red-500' : 'text-yellow-500'}`}>
+                        {isExpired ? 'Sync Token Missing' : 'Limited Permissions Detected'}
+                    </h5>
+                    <p className="text-[10px] text-slate-400 font-medium max-w-sm">
+                        {isExpired
+                            ? 'Your GitHub session has expired or is invalid. Please re-sync to enable repository scanning.'
+                            : `To analyze repository languages, we need "repo" access. Currently granted: ${status.grantedScopes?.length ? status.grantedScopes.join(', ') : 'none'}`}
+                    </p>
                 </div>
             </div>
             <button
                 onClick={() => window.location.href = "/api/auth/github"}
-                className="px-4 py-2 bg-yellow-500 text-slate-950 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-yellow-500/10"
+                className={`px-4 py-2 ${isExpired ? 'bg-red-500' : 'bg-yellow-500'} text-slate-950 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-white/5`}
             >
-                Grant Full Access
+                {isExpired ? 'Re-Sync GitHub' : 'Upgrade Access'}
             </button>
         </div>
     );

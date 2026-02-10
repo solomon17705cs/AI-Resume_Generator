@@ -24,7 +24,8 @@ import {
     BarChart4,
     Compass,
     Type,
-    Layout
+    Layout,
+    Github
 } from "lucide-react";
 import Link from "next/link";
 import { useResumeStore } from "@/store/useResumeStore";
@@ -32,10 +33,11 @@ import { useRouter } from "next/navigation";
 import axios from "axios";
 import { ATSScoreGauge } from "@/components/dashboard/ATSScoreGauge";
 import { ReasoningPanel } from "@/components/dashboard/ReasoningPanel";
-import { LogoutButton } from "@/components/layout/LogoutButton";
+import { Sidebar } from "@/components/layout/Sidebar";
 import { SkillIntelligence } from "@/components/dashboard/SkillIntelligence";
 import NeuralProgressOverlay from '@/components/dashboard/NeuralProgressOverlay';
 import MagicFixPanel from '@/components/dashboard/MagicFixPanel';
+import { JDArchitecturePanel } from '@/components/dashboard/JDArchitecturePanel';
 
 const NEURAL_STEPS = [
     { name: "Keyword Injection", icon: <Cpu size={20} />, description: "Aligning technical tokens with JD semantic clusters." },
@@ -44,6 +46,20 @@ const NEURAL_STEPS = [
     { name: "Clarity Optimization", icon: <Type size={20} />, description: "Reducing verbosity and improving Flesch readability." },
     { name: "ATS Validation", icon: <ShieldCheck size={20} />, description: "Final integrity check against the target platform rules." }
 ];
+
+const LinkedinIcon = ({ size }: { size: number }) => (
+    <svg
+        width={size} height={size}
+        viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" strokeWidth="2"
+        strokeLinecap="round" strokeLinejoin="round"
+        className="text-[#0077b5]"
+    >
+        <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
+        <rect x="2" y="9" width="4" height="12" />
+        <circle cx="4" cy="4" r="2" />
+    </svg>
+);
 
 export default function AnalysisPage() {
     const router = useRouter();
@@ -86,16 +102,21 @@ export default function AnalysisPage() {
         try {
             // STEP 1-3 Simulation
             for (let i = 1; i <= 3; i++) {
-                await new Promise(r => setTimeout(r, 1200));
+                await new Promise(r => setTimeout(r, 800));
                 setFixingStep(i);
             }
 
-            // Actual Optimization Trigger
+            // Actual Optimization Trigger with client-side timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s timeout
+
             const optRes = await axios.post('/api/optimize-full', {
                 resume,
                 jobDescription,
                 jobUrl
-            });
+            }, { signal: controller.signal });
+
+            clearTimeout(timeoutId);
 
             if (optRes.data.success) {
                 setFixingStep(4);
@@ -152,21 +173,26 @@ export default function AnalysisPage() {
                         forensics: analysisRes.data.match_forensics
                     });
 
-                    const improvement = (afterScore - beforeScore).toFixed(1);
-                    const estimation = optRes.data.scoreImpactEstimation || improvement;
-
                     // Final wait for cinematic effect
                     await new Promise(r => setTimeout(r, 800));
                 }
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error("Fix All failed", error);
-            alert("Optimization engine encountered an error.");
+            if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+                alert("Optimization timed out. The model might be overloaded. Please try again.");
+            } else {
+                alert(`Optimization engine error: ${error.response?.data?.message || error.message}`);
+            }
         } finally {
             setIsFixing(false);
             setFixingStep(0);
         }
     };
+
+    const hasSkills = resume.skills.some(cat => cat.skills.length > 0);
+    const isResumeEmpty = !resume.experience.length && !resume.projects.length && !hasSkills && !resume.summary;
+    const currentAnalysis = analysis;
 
     if (!isHydrated) return null;
 
@@ -178,31 +204,7 @@ export default function AnalysisPage() {
                 steps={NEURAL_STEPS}
             />
             {/* Sidebar */}
-            <aside className="w-64 border-r border-white/5 flex flex-col glass-dark shrink-0 h-full">
-                <div className="p-6 flex flex-col h-full">
-                    <div className="flex items-center gap-2 mb-12">
-                        <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-                            <Zap className="text-white fill-white" size={16} />
-                        </div>
-                        <span className="text-xl font-black font-display tracking-tighter">ATSense</span>
-                    </div>
-
-                    <nav className="flex-1 space-y-2">
-                        <SidebarItem href="/dashboard" icon={<LayoutDashboard size={18} />} label="Overview" />
-                        <SidebarItem href="/resumes" icon={<FileText size={18} />} label="My Resumes" />
-                        <SidebarItem href="/analysis" icon={<Target size={18} />} label="Job Analyzer" active />
-                        <SidebarItem href="/jobs" icon={<Compass size={18} />} label="Pathfinder" />
-                        <SidebarItem href="/recommendations" icon={<ShieldCheck size={18} />} label="Recommendations" />
-                        <SidebarItem href="/profile" icon={<User size={18} />} label="Profile" />
-                        <div className="h-px bg-white/5 my-4" />
-                        <SidebarItem href="#" icon={<Settings size={18} />} label="Settings" />
-                    </nav>
-
-                    <div className="mt-auto pt-6 border-t border-white/5">
-                        <LogoutButton />
-                    </div>
-                </div>
-            </aside>
+            <Sidebar />
 
             {/* Main Content */}
             <main className="flex-1 overflow-y-auto p-12 relative custom-scrollbar">
@@ -218,7 +220,35 @@ export default function AnalysisPage() {
                         </Link>
                     </header>
 
-                    {!analysis ? (
+                    {isResumeEmpty ? (
+                        <div className="p-20 glass-dark border border-white/5 rounded-[60px] text-center space-y-10 relative overflow-hidden">
+                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-blue-600/10 blur-[100px] -z-10 rounded-full" />
+                            <div className="w-24 h-24 bg-white/5 rounded-[40px] flex items-center justify-center mx-auto text-blue-500">
+                                <Brain size={48} className="animate-pulse" />
+                            </div>
+                            <div className="space-y-4">
+                                <h3 className="text-4xl font-black font-display tracking-tight">Intelligence Core: Offline</h3>
+                                <p className="text-slate-500 max-w-lg mx-auto font-medium text-lg leading-relaxed">
+                                    We cannot perform forensic matching without your technical data.
+                                    Import your profile to begin the optimization process.
+                                </p>
+                            </div>
+                            <div className="flex flex-wrap justify-center gap-6">
+                                <button
+                                    onClick={() => window.location.href = '/api/auth/github'}
+                                    className="flex items-center gap-3 px-10 py-5 bg-[#24292e] text-white rounded-[24px] font-black text-sm hover:scale-105 transition-all shadow-xl active:scale-95 border border-white/5"
+                                >
+                                    <Github size={20} /> Sync GitHub
+                                </button>
+                                <button
+                                    onClick={() => window.location.href = '/api/auth/linkedin'}
+                                    className="flex items-center gap-3 px-10 py-5 bg-white text-slate-950 rounded-[24px] font-black text-sm hover:scale-105 transition-all shadow-xl active:scale-95"
+                                >
+                                    <LinkedinIcon size={20} /> Sync LinkedIn
+                                </button>
+                            </div>
+                        </div>
+                    ) : !currentAnalysis ? (
                         <div className="p-20 border-2 border-dashed border-white/5 rounded-[60px] text-center space-y-8">
                             <div className="w-24 h-24 bg-white/5 rounded-[40px] flex items-center justify-center mx-auto text-slate-700">
                                 <Search size={48} />
@@ -235,15 +265,12 @@ export default function AnalysisPage() {
                         </div>
                     ) : (
                         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                            {/* NEW: Magic Fix Transformation Section */}
-                            {analysis && (
-                                <MagicFixPanel
-                                    currentScore={analysis.overallScore}
-                                    isFixing={isFixing}
-                                    onFix={handleFixAll}
-                                    matchForensics={analysis.forensics}
-                                />
-                            )}
+                            <MagicFixPanel
+                                currentScore={currentAnalysis.overallScore}
+                                isFixing={isFixing}
+                                onFix={handleFixAll}
+                                matchForensics={currentAnalysis.forensics}
+                            />
 
                             <AnimatePresence>
                                 {transformationLog && (
@@ -278,25 +305,25 @@ export default function AnalysisPage() {
                                             <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-widest rounded-full">
                                                 <Zap size={12} /> Neural Match Active
                                             </div>
-                                            {analysis.atsType && (
+                                            {currentAnalysis.atsType && (
                                                 <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-black uppercase tracking-widest rounded-full">
-                                                    <ShieldCheck size={12} /> {analysis.atsType} Profile Detected
+                                                    <ShieldCheck size={12} /> {currentAnalysis.atsType} Profile Detected
                                                 </div>
                                             )}
                                         </div>
                                         <div>
                                             <h3 className="text-4xl font-black font-display tracking-tight mb-2">System Alignment</h3>
                                             <p className="text-slate-400 text-sm font-medium leading-relaxed max-w-sm">
-                                                {analysis.atsProfile?.description || "Your resume has been measured against standard Big Tech hiring logic."}
+                                                {currentAnalysis.atsProfile?.description || "Your resume has been measured against standard Big Tech hiring logic."}
                                             </p>
                                         </div>
 
-                                        {analysis.atsProfile?.rules && (
+                                        {currentAnalysis.atsProfile?.rules && (
                                             <div className="space-y-4">
                                                 <div className="space-y-2">
                                                     <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Platform Rules</h4>
                                                     <div className="flex flex-wrap gap-2">
-                                                        {analysis.atsProfile.rules.map((rule: string, i: number) => (
+                                                        {currentAnalysis.atsProfile.rules.map((rule: string, i: number) => (
                                                             <span key={i} className="px-3 py-1 bg-white/5 border border-white/5 rounded-lg text-[10px] font-bold text-slate-400">
                                                                 {rule}
                                                             </span>
@@ -307,7 +334,7 @@ export default function AnalysisPage() {
                                         )}
                                     </div>
                                     <div className="w-48 h-48 scale-110 shrink-0 relative">
-                                        <ATSScoreGauge score={analysis.overallScore} />
+                                        <ATSScoreGauge score={currentAnalysis.overallScore} />
                                         {(isAnalyzingSuggestion || isFixing) && (
                                             <div className="absolute inset-0 flex items-center justify-center bg-slate-950/20 rounded-full animate-pulse">
                                                 <div className="text-[8px] font-black text-white uppercase tracking-[0.3em] bg-blue-600 px-2 py-1 rounded shadow-lg">Recalculating</div>
@@ -321,19 +348,19 @@ export default function AnalysisPage() {
                                     <div className="space-y-5">
                                         <ForensicStat
                                             label="Keyword Match (40%)"
-                                            value={analysis.forensics?.keyword_match ? (analysis.forensics.keyword_match * 0.4) : (analysis.overallScore * 0.4)}
+                                            value={currentAnalysis.forensics?.keyword_match ? (currentAnalysis.forensics.keyword_match * 0.4) : (currentAnalysis.overallScore * 0.4)}
                                         />
                                         <ForensicStat
                                             label="Section Compliance (30%)"
-                                            value={analysis.forensics?.section_compliance ? (analysis.forensics.section_compliance * 0.3) : (analysis.overallScore * 0.3)}
+                                            value={currentAnalysis.forensics?.section_compliance ? (currentAnalysis.forensics.section_compliance * 0.3) : (currentAnalysis.overallScore * 0.3)}
                                         />
                                         <ForensicStat
                                             label="Semantic Relevance (20%)"
-                                            value={analysis.forensics?.semantic_relevance ? (analysis.forensics.semantic_relevance * 0.2) : (analysis.overallScore * 0.2)}
+                                            value={currentAnalysis.forensics?.semantic_relevance ? (currentAnalysis.forensics.semantic_relevance * 0.2) : (currentAnalysis.overallScore * 0.2)}
                                         />
                                         <ForensicStat
                                             label="Clarity & Recency (10%)"
-                                            value={analysis.forensics?.clarity_recency ? (analysis.forensics.clarity_recency * 0.1) : (analysis.overallScore * 0.1)}
+                                            value={currentAnalysis.forensics?.clarity_recency ? (currentAnalysis.forensics.clarity_recency * 0.1) : (currentAnalysis.overallScore * 0.1)}
                                         />
                                     </div>
                                     <p className="text-[9px] font-medium opacity-70 text-center leading-relaxed mt-4">
@@ -344,10 +371,17 @@ export default function AnalysisPage() {
 
                             {/* Section breakdown */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <MetricCard label="Experience Impact" score={analysis.sectionScores?.experience || 0} icon={<Cpu size={24} />} color="blue" />
-                                <MetricCard label="Skill Alignment" score={analysis.sectionScores?.skills || 0} icon={<BarChart4 size={24} />} color="emerald" />
-                                <MetricCard label="XYZ Formatting" score={analysis.sectionScores?.impact || 0} icon={<Settings size={24} />} color="indigo" />
+                                <MetricCard label="Experience Impact" score={currentAnalysis.sectionScores?.experience || 0} icon={<Cpu size={24} />} color="blue" />
+                                <MetricCard label="Skill Alignment" score={currentAnalysis.sectionScores?.skills || 0} icon={<BarChart4 size={24} />} color="emerald" />
+                                <MetricCard label="XYZ Formatting" score={currentAnalysis.sectionScores?.impact || 0} icon={<Settings size={24} />} color="indigo" />
                             </div>
+
+                            {/* Role-First Intelligence Architecture */}
+                            {currentAnalysis.jd_intelligence && (
+                                <div className="animate-in fade-in slide-in-from-bottom-4">
+                                    <JDArchitecturePanel intelligence={currentAnalysis.jd_intelligence} />
+                                </div>
+                            )}
 
                             {/* Strategic Intelligence & Engineering Inventory */}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
@@ -357,18 +391,18 @@ export default function AnalysisPage() {
                                         <h3 className="text-2xl font-bold font-display tracking-tight">Strategic Intelligence Report</h3>
                                     </div>
                                     <ReasoningPanel
-                                        reasoning={analysis.reasoning}
-                                        suggestions={analysis.suggestions}
-                                        forensics={analysis.forensics}
+                                        reasoning={currentAnalysis.reasoning}
+                                        suggestions={currentAnalysis.suggestions}
+                                        forensics={currentAnalysis.forensics}
                                         onRefreshSuggestion={(id) => {
-                                            if (id === 'missing-keys' && (analysis.keywords?.missing?.length || 0) > 0) {
-                                                const allMissing = analysis.keywords!.missing;
+                                            if (id === 'missing-keys' && (currentAnalysis.keywords?.missing?.length || 0) > 0) {
+                                                const allMissing = currentAnalysis.keywords!.missing;
                                                 const shuffled = [...allMissing].sort(() => 0.5 - Math.random());
                                                 const newKeywords = shuffled.slice(0, 2);
 
                                                 setAnalysis({
-                                                    ...analysis,
-                                                    suggestions: analysis.suggestions.map(s =>
+                                                    ...currentAnalysis,
+                                                    suggestions: currentAnalysis.suggestions.map(s =>
                                                         s.id === 'missing-keys'
                                                             ? {
                                                                 ...s,
@@ -380,13 +414,13 @@ export default function AnalysisPage() {
                                                             : s
                                                     )
                                                 });
-                                            } else if (id === 'density-low' && (analysis.keywords?.missing?.length || 0) > 0) {
-                                                const allMissing = analysis.keywords!.missing;
+                                            } else if (id === 'density-low' && (currentAnalysis.keywords?.missing?.length || 0) > 0) {
+                                                const allMissing = currentAnalysis.keywords!.missing;
                                                 const shuffled = [...allMissing].sort(() => 0.5 - Math.random());
                                                 const newKeywords = shuffled.slice(0, 3);
                                                 setAnalysis({
-                                                    ...analysis,
-                                                    suggestions: analysis.suggestions.map(s =>
+                                                    ...currentAnalysis,
+                                                    suggestions: currentAnalysis.suggestions.map(s =>
                                                         s.id === 'density-low'
                                                             ? {
                                                                 ...s,
@@ -400,8 +434,8 @@ export default function AnalysisPage() {
                                                 });
                                             } else if (!isNaN(Number(id))) {
                                                 setAnalysis({
-                                                    ...analysis,
-                                                    suggestions: [...analysis.suggestions].sort(() => 0.5 - Math.random())
+                                                    ...currentAnalysis,
+                                                    suggestions: [...currentAnalysis.suggestions].sort(() => 0.5 - Math.random())
                                                 });
                                             }
                                         }}
@@ -477,11 +511,11 @@ export default function AnalysisPage() {
                                     </div>
 
                                     <div className="space-y-4">
-                                        {analysis.keywordMetrics && analysis.keywordMetrics.filter(kw => !kw.found).length > 0 ? (
-                                            analysis.keywordMetrics
+                                        {currentAnalysis.keywordMetrics && currentAnalysis.keywordMetrics.filter(kw => !kw.found).length > 0 ? (
+                                            currentAnalysis.keywordMetrics
                                                 .filter(kw => !kw.found)
-                                                .sort((a, b) => {
-                                                    const order = { high: 0, medium: 1, low: 2 };
+                                                .sort((a, b: any) => {
+                                                    const order: any = { high: 0, medium: 1, low: 2 };
                                                     return order[a.priority as keyof typeof order] - order[b.priority as keyof typeof order];
                                                 })
                                                 .slice(0, 6)
@@ -555,8 +589,8 @@ export default function AnalysisPage() {
                                     </div>
 
                                     <div className="space-y-4">
-                                        {analysis.keywordMetrics && analysis.keywordMetrics.filter(kw => kw.found).length > 0 ? (
-                                            analysis.keywordMetrics
+                                        {currentAnalysis.keywordMetrics && currentAnalysis.keywordMetrics.filter(kw => kw.found).length > 0 ? (
+                                            currentAnalysis.keywordMetrics
                                                 .filter(kw => kw.found)
                                                 .sort((a, b) => b.count_in_resume - a.count_in_resume)
                                                 .slice(0, 6)
@@ -605,12 +639,6 @@ export default function AnalysisPage() {
     );
 }
 
-const SidebarItem = ({ icon, label, active = false, href }: any) => (
-    <Link href={href} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${active ? 'bg-blue-600/10 text-blue-400' : 'text-slate-500 hover:bg-white/5 hover:text-slate-300'}`}>
-        {icon}
-        {label}
-    </Link>
-);
 
 const ForensicStat = ({ label, value }: any) => {
     const clampedValue = Math.min(value, 100);

@@ -13,6 +13,49 @@ app = FastAPI(title="ATSense Hybrid Intelligence Engine")
 kw_model = None
 sim_model = None
 
+CS_SEMANTIC_KEYWORDS = {
+    'frontend': [
+        'React', 'JavaScript', 'TypeScript', 'UI components', 'state management',
+        'performance optimization', 'web accessibility', 'responsive design',
+        'component-based architecture', 'frontend performance'
+    ],
+    'backend': [
+        'REST APIs', 'microservices', 'database optimization', 'authentication',
+        'server-side logic', 'distributed systems', 'SQL', 'NoSQL', 'API integration',
+        'backend development', 'database design', 'scalable systems'
+    ],
+    'ml': [
+        'machine learning', 'deep learning', 'model training', 'data preprocessing',
+        'neural networks', 'model evaluation', 'AI engineering', 'computer vision',
+        'natural language processing'
+    ],
+    'generic': [
+        'software engineering', 'data structures', 'algorithms',
+        'object-oriented programming', 'system design', 'problem-solving',
+        'code optimization', 'scalable systems', 'API design', 'database management'
+    ]
+}
+
+def detect_role(jd: str) -> str:
+    jd_lower = jd.lower()
+    # Weighted scoring matching frontend logic
+    scores = {
+        'frontend': len(re.findall(r'frontend|react|angular|vue|css|html|ui|ux|web|accessibility|responsive', jd_lower)) * 1.5,
+        'backend': len(re.findall(r'backend|node|express|django|flask|spring|sql|api|database|server|microservices|distributed', jd_lower)) * 1.5,
+        'ml': len(re.findall(r'ml|ai|machine learning|deep learning|neural|data science|pytorch|tensorflow|computer vision|nlp', jd_lower)) * 2.0,
+        'fullstack': len(re.findall(r'full stack|fullstack', jd_lower)) * 3.0
+    }
+    
+    max_score = max(scores.values())
+    if max_score == 0:
+        return 'generic'
+        
+    if scores['fullstack'] == max_score or (scores['frontend'] > 3 and scores['backend'] > 3):
+        return 'backend' # Score as backend for technical depth requirement
+        
+    max_role = max(scores, key=scores.get)
+    return max_role
+
 def get_models():
     global kw_model, sim_model
     if kw_model is None:
@@ -66,25 +109,49 @@ def clean_keywords(keywords: List[str], text: str) -> List[str]:
     Ensures semantic keywords are professional noun phrases.
     """
     cleaned = []
+    # More aggressive blacklist for filler/marketing terms
     blacklist = {
         'planys', 'actively', 'hiring', 'globally', 'integrates', 'deep', 'brief', 
         'opportunity', 'join', 'company', 'mission', 'vision', 'located', 'office',
         'remote', 'hybrid', 'benefits', 'salary', 'competitive', 'equal', 'employer',
-        'professional', 'passionate', 'dedicated', 'experienced', 'successfully'
+        'professional', 'passionate', 'dedicated', 'experienced', 'successfully',
+        'strengthen', 'seamlessly', 'excellent', 'passionate', 'team', 'work', 
+        'environment', 'dynamic', 'thrive', 'motivated', 'ability', 'capability'
     }
+    # Words that should never be the start of a multi-word keyword unless it's a known tech
     broken_starts = {
         'development', 'builds', 'applications', 'working', 'using', 'leveraging', 
-        'handling', 'managing', 'providing', 'excellent', 'strong', 'brief'
+        'handling', 'managing', 'providing', 'excellent', 'strong', 'brief', 'integrated',
+        'automation' # 'Automation' is often filler if it's 'automation seamlessly'
+    }
+    
+    # Technical dictionary for positive reinforcement
+    tech_stack = {
+        'python', 'java', 'node', 'react', 'typescript', 'aws', 'docker', 'kubernetes',
+        'postgresql', 'mysql', 'mongodb', 'redis', 'kafka', 'spark', 'pytorch', 'tensorflow'
     }
 
     for kw in keywords:
         kw_clean = kw.lower().strip()
         words = kw_clean.split()
+        
+        # 1. Blacklist check
         if any(word in blacklist for word in words): continue
         if len(kw_clean) < 3 or kw_clean.isdigit(): continue
-        stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'for', 'with', 'by', 'of', 'at', 'to', 'from', 'in', 'on', 'if', 'is', 'are', 'was', 'were'}
+        
+        # 2. Stop words at start/end
+        stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'for', 'with', 'by', 'of', 'at', 'to', 'from', 'in', 'on', 'if', 'is', 'are', 'was', 'were', 'our', 'your'}
         if words[0] in stop_words or words[-1] in stop_words: continue
-        if words[0] in broken_starts and len(words) < 3: continue
+        
+        # 3. Filter out generic "Verb + Adverb" or "Verb + Noun" that aren't technical
+        # e.g. "automation seamlessly", "strengthen automation"
+        if words[0] in broken_starts and len(words) < 3 and not (len(words) >= 2 and words[1] in tech_stack):
+            continue
+            
+        # 4. Filter out very common filler phrases
+        if 'integrates' in kw_clean or 'seamlessly' in kw_clean:
+            continue
+            
         cleaned.append(kw)
     return cleaned[:15]
 
@@ -99,7 +166,15 @@ async def analyze(request: AnalysisRequest):
     
     # 1. Hybrid Keyword Match (40% Weight)
     jd_keywords_raw = kw_l.extract_keywords(request.job_description, keyphrase_ngram_range=(1, 3), stop_words='english', top_n=50)
-    jd_keywords = clean_keywords([kw[0] for kw in jd_keywords_raw], request.job_description)
+    extracted_keywords = [kw[0] for kw in jd_keywords_raw]
+    
+    # Inject Domain Semantic Keywords
+    role = detect_role(request.job_description)
+    domain_keywords = CS_SEMANTIC_KEYWORDS.get(role, CS_SEMANTIC_KEYWORDS['generic'])
+    
+    # Mix extracted and domain keywords
+    combined_keywords = list(dict.fromkeys(extracted_keywords + domain_keywords))
+    jd_keywords = clean_keywords(combined_keywords, request.job_description)
     
     # Count frequencies and get context
     jd_lower = request.job_description.lower()

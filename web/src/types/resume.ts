@@ -100,6 +100,20 @@ export interface ATSAnalysis {
         section_compliance?: number;
         clarity_recency?: number;
     };
+    jd_intelligence?: {
+        role: string;
+        domain: string;
+        stack: {
+            languages: string[];
+            frameworks: string[];
+            databases: string[];
+            cloud: string[];
+            tools: string[];
+            concepts: string[];
+        };
+        seniority: string;
+        industry: string;
+    };
 }
 export interface RecommendationRequest {
     id: string;

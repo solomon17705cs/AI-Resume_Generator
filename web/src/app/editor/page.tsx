@@ -245,6 +245,7 @@ export default function EditorPage() {
                             type="text"
                             value={resume.title}
                             onChange={(e) => updateResume({ title: e.target.value })}
+                            placeholder="Untitled Resume"
                             className="bg-transparent border-none text-blue-400 focus:outline-none focus:ring-0 p-0 w-auto min-w-[50px] cursor-text"
                             onBlur={(e) => {
                                 if (!e.target.value.trim()) {
@@ -269,6 +270,16 @@ export default function EditorPage() {
                             </>
                         )}
                     </div>
+                    <button
+                        onClick={() => {
+                            if (confirm("Are you sure you want to clear EVERYTHING? This will reset your resume to a blank template.")) {
+                                useResumeStore.getState().resetResume();
+                            }
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 text-slate-500 hover:text-red-400 text-[10px] font-black uppercase tracking-widest transition-all"
+                    >
+                        <Trash2 size={14} /> Clear All
+                    </button>
                     <button
                         onClick={handleExportPDF}
                         className="flex items-center gap-2 px-6 py-2 bg-white text-slate-950 hover:bg-slate-200 rounded-xl font-black text-xs transition-all shadow-xl shadow-white/10"
@@ -474,12 +485,12 @@ export default function EditorPage() {
                                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
                                     <SectionHeader title="Identify & Contact" />
                                     <div className="grid grid-cols-2 gap-6">
-                                        <InputField label="Full Name" value={resume.personalInfo.fullName} onChange={(v: string) => updatePersonalInfo({ fullName: v })} />
-                                        <InputField label="Email Address" value={resume.personalInfo.email} onChange={(v: string) => updatePersonalInfo({ email: v.toLowerCase() })} />
-                                        <InputField label="Phone" value={resume.personalInfo.phone} onChange={(v: string) => updatePersonalInfo({ phone: v })} />
-                                        <InputField label="Location" value={resume.personalInfo.location} onChange={(v: string) => updatePersonalInfo({ location: v })} />
-                                        <InputField label="LinkedIn" value={resume.personalInfo.linkedin} onChange={(v: string) => updatePersonalInfo({ linkedin: v })} />
-                                        <InputField label="GitHub" value={resume.personalInfo.github} onChange={(v: string) => updatePersonalInfo({ github: v })} />
+                                        <InputField label="Full Name" value={resume.personalInfo.fullName} onChange={(v: string) => updatePersonalInfo({ fullName: v })} placeholder="e.g. John Doe" />
+                                        <InputField label="Email Address" value={resume.personalInfo.email} onChange={(v: string) => updatePersonalInfo({ email: v.toLowerCase() })} placeholder="e.g. john@example.com" />
+                                        <InputField label="Phone" value={resume.personalInfo.phone} onChange={(v: string) => updatePersonalInfo({ phone: v })} placeholder="e.g. +1 555 000 0000" />
+                                        <InputField label="Location" value={resume.personalInfo.location} onChange={(v: string) => updatePersonalInfo({ location: v })} placeholder="e.g. San Francisco, CA" />
+                                        <InputField label="LinkedIn" value={resume.personalInfo.linkedin} onChange={(v: string) => updatePersonalInfo({ linkedin: v })} placeholder="linkedin.com/in/johndoe" />
+                                        <InputField label="GitHub" value={resume.personalInfo.github} onChange={(v: string) => updatePersonalInfo({ github: v })} placeholder="github.com/johndoe" />
                                     </div>
 
                                     {/* AI Auto-Generation Section */}
@@ -569,7 +580,8 @@ export default function EditorPage() {
                                                                 years_experience: resume.experience.length,
                                                                 existing_experience: resume.experience,
                                                                 existing_projects: projectContext,
-                                                                existing_skills: resume.skills
+                                                                existing_skills: resume.skills,
+                                                                existing_education: resume.education
                                                             },
                                                             ats_type: atsType || 'generic',
                                                             target_role: jobDescription.match(/(?:looking for|seeking|hiring)\s+(?:a\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i)?.[1] || 'Software Engineer'
@@ -692,10 +704,10 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                                                     <Trash2 size={16} />
                                                 </button>
                                                 <div className="grid grid-cols-2 gap-6">
-                                                    <InputField label="Organization" value={exp.company} onChange={(v: string) => updateExperience(exp.id, { company: v })} />
-                                                    <InputField label="Role Title" value={exp.role} onChange={(v: string) => updateExperience(exp.id, { role: v })} />
-                                                    <InputField label="Start Date" value={exp.startDate} onChange={(v: string) => updateExperience(exp.id, { startDate: v })} />
-                                                    <InputField label="End Date" value={exp.endDate} onChange={(v: string) => updateExperience(exp.id, { endDate: v })} />
+                                                    <InputField label="Organization" value={exp.company} onChange={(v: string) => updateExperience(exp.id, { company: v })} placeholder="e.g. Tech Corp" />
+                                                    <InputField label="Role Title" value={exp.role} onChange={(v: string) => updateExperience(exp.id, { role: v })} placeholder="e.g. Software Engineer" />
+                                                    <InputField label="Start Date" value={exp.startDate} onChange={(v: string) => updateExperience(exp.id, { startDate: v })} placeholder="Jan 2020" />
+                                                    <InputField label="End Date" value={exp.endDate} onChange={(v: string) => updateExperience(exp.id, { endDate: v })} placeholder="Present" />
                                                 </div>
                                                 <div className="space-y-4">
                                                     <div className="flex items-center justify-between text-[10px] font-black text-slate-500 uppercase tracking-widest px-2">
@@ -762,11 +774,11 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                                                     <InputField label="Project Name" value={proj.name} onChange={(v: string) => {
                                                         const updated = resume.projects.map(p => p.id === proj.id ? { ...p, name: v } : p);
                                                         updateResume({ projects: updated });
-                                                    }} />
+                                                    }} placeholder="e.g. E-commerce API" />
                                                     <InputField label="Live Link / Repo" value={proj.link} onChange={(v: string) => {
                                                         const updated = resume.projects.map(p => p.id === proj.id ? { ...p, link: v } : p);
                                                         updateResume({ projects: updated });
-                                                    }} />
+                                                    }} placeholder="github.com/user/project" />
                                                 </div>
                                                 <div className="space-y-4">
                                                     <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-2">Key Contributions</div>
@@ -807,12 +819,41 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
 
                             {activeTab === "summary" && (
                                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-                                    <SectionHeader title="Executive Summary" />
+                                    <div className="flex items-center justify-between">
+                                        <SectionHeader title="Executive Summary" />
+                                        <button
+                                            onClick={async () => {
+                                                if (!jobDescription) {
+                                                    alert("Please paste a Job Description first to use the AI Writer.");
+                                                    return;
+                                                }
+                                                setIsOptimizing(true);
+                                                try {
+                                                    const res = await axios.post('/api/optimize-summary', {
+                                                        summary: resume.summary,
+                                                        job_description: jobDescription
+                                                    });
+                                                    if (confirm(`AI suggests this optimized summary:\n\n"${res.data.optimizedSummary}"\n\nWould you like to apply it?`)) {
+                                                        updateResume({ summary: res.data.optimizedSummary });
+                                                    }
+                                                } catch (err) {
+                                                    alert("Summary optimization failed.");
+                                                } finally {
+                                                    setIsOptimizing(false);
+                                                }
+                                            }}
+                                            disabled={isOptimizing || !jobDescription}
+                                            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-2xl hover:bg-blue-600 hover:text-white transition-all font-black text-[10px] uppercase tracking-widest disabled:opacity-30 group"
+                                        >
+                                            <Wand2 size={14} className={isOptimizing ? "animate-spin" : "group-hover:rotate-12 transition-transform"} />
+                                            {isOptimizing ? "Writing..." : "AI Writer"}
+                                        </button>
+                                    </div>
                                     <textarea
                                         value={resume.summary}
                                         onChange={(e) => updateResume({ summary: e.target.value })}
                                         className="w-full h-64 bg-slate-900 border border-white/5 rounded-[32px] p-8 text-sm text-slate-300 focus:outline-none focus:border-blue-500 transition-all font-medium leading-relaxed"
-                                        placeholder="Tell your professional story..."
+                                        placeholder="[Write a brief high-impact summary here, focusing on your core expertise and major achievements. Or use the AI Writer to generate one based on the JD...]"
                                     />
                                 </div>
                             )}
@@ -881,19 +922,19 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                                             <InputField label="Institution" value={edu.institution} onChange={(v: string) => {
                                                 const updated = resume.education.map(e => e.id === edu.id ? { ...e, institution: v } : e);
                                                 updateResume({ education: updated });
-                                            }} />
+                                            }} placeholder="e.g. Stanford University" />
                                             <InputField label="Degree / Field" value={edu.degree} onChange={(v: string) => {
                                                 const updated = resume.education.map(e => e.id === edu.id ? { ...e, degree: v } : e);
                                                 updateResume({ education: updated });
-                                            }} />
+                                            }} placeholder="e.g. B.S. in Computer Science" />
                                             <InputField label="Location" value={edu.location} onChange={(v: string) => {
                                                 const updated = resume.education.map(e => e.id === edu.id ? { ...e, location: v } : e);
                                                 updateResume({ education: updated });
-                                            }} />
+                                            }} placeholder="e.g. Stanford, CA" />
                                             <InputField label="Graduation Date" value={edu.graduationDate} onChange={(v: string) => {
                                                 const updated = resume.education.map(e => e.id === edu.id ? { ...e, graduationDate: v } : e);
                                                 updateResume({ education: updated });
-                                            }} />
+                                            }} placeholder="e.g. 2022" />
                                         </div>
                                     ))}
                                     <button
@@ -959,7 +1000,13 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                                 transformOrigin: 'top center'
                             }}
                         >
-                            <Preview data={resume as any} scale={1} />
+                            <Preview
+                                data={resume}
+                                scale={1}
+                                jobDescription={jobDescription}
+                                isInteractive={true}
+                                onUpdate={updateResume}
+                            />
                         </div>
                     </div>
                 </aside>
@@ -1015,7 +1062,13 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                                     transformOrigin: 'center center'
                                 }}
                             >
-                                <Preview data={resume as any} scale={1} />
+                                <Preview
+                                    data={resume}
+                                    scale={1}
+                                    jobDescription={jobDescription}
+                                    isInteractive={true}
+                                    onUpdate={updateResume}
+                                />
                             </motion.div>
                         </div>
                     </motion.div>
@@ -1055,7 +1108,7 @@ const SectionHeader = ({ title, onAdd, children }: { title: string, onAdd?: () =
     </div>
 );
 
-const InputField = ({ label, value, onChange }: any) => (
+const InputField = ({ label, value, onChange, placeholder }: any) => (
     <div className="space-y-3 group/input">
         <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2 group-focus-within/input:text-blue-400 transition-colors">{label}</label>
         <div className="relative">
@@ -1063,6 +1116,7 @@ const InputField = ({ label, value, onChange }: any) => (
                 type="text"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
+                placeholder={placeholder}
                 className="w-full bg-slate-900/50 backdrop-blur-sm border border-white/5 hover:border-white/10 rounded-2xl px-6 py-4 text-sm text-slate-200 focus:outline-none focus:border-blue-500/50 focus:bg-slate-900/80 transition-all font-medium shadow-inner shadow-black/20"
             />
             <div className="absolute inset-0 rounded-2xl pointer-events-none border border-transparent group-focus-within/input:border-blue-500/20 group-focus-within/input:shadow-[0_0_20px_rgba(37,99,235,0.05)]" />

@@ -1,20 +1,92 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { ResumeData } from '@/types/resume';
+import { Wand2, Sparkles, Loader2 } from 'lucide-react';
+import axios from 'axios';
 
 interface PreviewProps {
     data: ResumeData;
     scale?: number;
+    jobDescription?: string;
+    isInteractive?: boolean;
+    onUpdate?: (updates: Partial<ResumeData>) => void;
 }
 
-export const Preview: React.FC<PreviewProps> = ({ data, scale = 1 }) => {
+export const Preview: React.FC<PreviewProps> = ({ data, scale = 1, jobDescription, isInteractive = false, onUpdate }) => {
+    const [optimizingId, setOptimizingId] = useState<string | null>(null);
+
     if (!data) return null;
     const { personalInfo, summary, experience, projects, skills, education } = data;
 
+    const handleOptimizeSummary = async () => {
+        if (!jobDescription || !onUpdate) return;
+        setOptimizingId('summary');
+        try {
+            const res = await axios.post('/api/optimize-summary', {
+                summary: summary,
+                job_description: jobDescription
+            });
+            if (confirm(`AI suggests this optimized summary:\n\n"${res.data.optimizedSummary}"\n\nApply to preview?`)) {
+                onUpdate({ summary: res.data.optimizedSummary });
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setOptimizingId(null);
+        }
+    };
+
+    const handleOptimizeBullet = async (section: 'experience' | 'projects', entryId: string, bulletIdx: number) => {
+        if (!jobDescription || !onUpdate) return;
+        const id = `${section}-${entryId}-${bulletIdx}`;
+        setOptimizingId(id);
+
+        try {
+            const bulletText = section === 'experience'
+                ? experience.find(e => e.id === entryId)?.bullets[bulletIdx]
+                : projects.find(p => p.id === entryId)?.bullets[bulletIdx];
+
+            if (!bulletText) return;
+
+            const res = await axios.post('/api/optimize', {
+                bullet: bulletText,
+                job_description: jobDescription
+            });
+
+            if (confirm(`AI optimized statement:\n\n"${res.data.optimizedSlug}"\n\nApply to preview?`)) {
+                if (section === 'experience') {
+                    const newExp = experience.map(e => {
+                        if (e.id === entryId) {
+                            const newBullets = [...e.bullets];
+                            newBullets[bulletIdx] = res.data.optimizedSlug;
+                            return { ...e, bullets: newBullets };
+                        }
+                        return e;
+                    });
+                    onUpdate({ experience: newExp });
+                } else {
+                    const newProj = projects.map(p => {
+                        if (p.id === entryId) {
+                            const newBullets = [...p.bullets];
+                            newBullets[bulletIdx] = res.data.optimizedSlug;
+                            return { ...p, bullets: newBullets };
+                        }
+                        return p;
+                    });
+                    onUpdate({ projects: newProj });
+                }
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setOptimizingId(null);
+        }
+    };
+
     return (
         <div
-            className="bg-white text-slate-900 shadow-2xl origin-top-left"
+            className="text-slate-900 origin-top-left"
             style={{
                 width: '210mm',
                 minHeight: '297mm',
@@ -42,95 +114,118 @@ export const Preview: React.FC<PreviewProps> = ({ data, scale = 1 }) => {
                 </header>
 
                 {/* Executive Summary */}
-                {summary && (
-                    <section>
-                        <SectionTitle title="Executive Summary" />
-                        <p className="text-[10pt] leading-[1.6] text-slate-800 text-justify font-medium">{summary}</p>
-                    </section>
-                )}
+                <section>
+                    <SectionTitle title="Executive Summary" />
+                    <p className={`text-[10pt] leading-[1.6] text-justify font-medium ${!summary ? 'text-slate-400 italic' : 'text-slate-800'}`}>
+                        {summary || '[Write a brief high-impact summary here. Highlight your years of experience, core technical stack, and your most significant achievement or specialization.]'}
+                    </p>
+                </section>
 
-                {/* Experience - The Core Section */}
-                {experience.length > 0 && (
-                    <section>
-                        <SectionTitle title="Professional Experience" />
-                        <div className="space-y-6">
-                            {experience.map((exp) => (
-                                <div key={exp.id} className="space-y-2">
-                                    <div className="flex justify-between items-baseline">
-                                        <h3 className="font-extrabold text-[11pt] text-slate-900 tracking-tight">{exp.company}</h3>
-                                        <span className="text-[9pt] font-black text-slate-500 uppercase tracking-widest">{exp.location}</span>
-                                    </div>
-                                    <div className="flex justify-between items-baseline">
-                                        <span className="font-bold text-[10pt] text-blue-700 italic">{exp.role}</span>
-                                        <span className="text-[9pt] font-bold text-slate-700">{exp.startDate} – {exp.endDate}</span>
-                                    </div>
-                                    <ul className="list-disc list-outside ml-4 text-[9.5pt] space-y-1.5 text-slate-800">
-                                        {exp.bullets.map((bullet, idx) => (
-                                            bullet && <li key={idx} className="pl-2 leading-[1.4] font-medium">{bullet}</li>
-                                        ))}
-                                    </ul>
+                {/* Experience */}
+                <section className="space-y-4">
+                    <SectionTitle title="Professional Experience" />
+                    <div className="space-y-6">
+                        {experience.length > 0 ? experience.map((exp) => (
+                            <div key={exp.id} className="space-y-2">
+                                <div className="flex justify-between items-baseline">
+                                    <h3 className="font-extrabold text-[11pt] text-slate-900 tracking-tight">{exp.company || '[Company Name]'}</h3>
+                                    <span className="text-[9pt] font-black text-slate-500 uppercase tracking-widest">{exp.location || '[Location]'}</span>
                                 </div>
-                            ))}
-                        </div>
-                    </section>
-                )}
+                                <div className="flex justify-between items-baseline">
+                                    <span className="font-bold text-[10pt] text-blue-700 italic">{exp.role || '[Job Title]'}</span>
+                                    <span className="text-[9pt] font-bold text-slate-700">{exp.startDate || '[Start Date]'} – {exp.endDate || '[End Date]'}</span>
+                                </div>
+                                <ul className="list-disc list-outside ml-4 text-[9.5pt] space-y-1.5 text-slate-800">
+                                    {exp.bullets.length > 0 && exp.bullets.some(b => b.trim()) ? exp.bullets.map((bullet, idx) => (
+                                        bullet && <li key={idx} className="pl-2 leading-[1.4] font-medium">{bullet}</li>
+                                    )) : (
+                                        <li className="pl-2 leading-[1.4] font-medium text-slate-400 italic">[Add your key accomplishments and impact here using metrics if possible]</li>
+                                    )}
+                                </ul>
+                            </div>
+                        )) : (
+                            <p className="text-[10pt] text-slate-400 italic font-medium">[No professional experience added yet. Add your work history in the editor.]</p>
+                        )}
+                    </div>
+                </section>
 
                 {/* Projects Section */}
-                {projects.length > 0 && (
-                    <section>
-                        <SectionTitle title="Technical Projects" />
-                        <div className="space-y-4">
-                            {projects.map((proj) => (
-                                <div key={proj.id} className="space-y-1">
-                                    <div className="flex justify-between items-baseline">
-                                        <h3 className="font-extrabold text-[10pt] text-slate-900 uppercase tracking-tight">{proj.name}</h3>
-                                        {proj.link && <span className="text-[8pt] font-bold text-blue-700 underline italic lowercase">{proj.link}</span>}
-                                    </div>
-                                    <ul className="list-disc list-outside ml-4 text-[9pt] space-y-1 text-slate-700">
-                                        {proj.bullets.map((bullet, idx) => (
-                                            bullet && <li key={idx} className="pl-2 leading-[1.3] font-medium">{bullet}</li>
-                                        ))}
-                                    </ul>
+                <section className="space-y-4">
+                    <SectionTitle title="Technical Projects" />
+                    <div className="space-y-4">
+                        {projects.length > 0 ? projects.map((proj) => (
+                            <div key={proj.id} className="space-y-1">
+                                <div className="flex justify-between items-baseline">
+                                    <h3 className="font-extrabold text-[10pt] text-slate-900 uppercase tracking-tight">{proj.name || '[Project Name]'}</h3>
+                                    {proj.link && <span className="text-[8pt] font-bold text-blue-700 underline italic lowercase">{proj.link}</span>}
                                 </div>
-                            ))}
-                        </div>
-                    </section>
-                )}
+                                <ul className="list-disc list-outside ml-4 text-[9pt] space-y-1 text-slate-700">
+                                    {proj.bullets.length > 0 && proj.bullets.some(b => b.trim()) ? proj.bullets.map((bullet, idx) => (
+                                        bullet && <li key={idx} className="pl-2 leading-[1.3] font-medium">{bullet}</li>
+                                    )) : (
+                                        <li className="pl-2 leading-[1.3] font-medium text-slate-400 italic">[Describe your technical contribution and the technologies used]</li>
+                                    )}
+                                </ul>
+                            </div>
+                        )) : (
+                            <p className="text-[9pt] text-slate-400 italic font-medium">[Add technical projects to showcase your skills outside of work history]</p>
+                        )}
+                    </div>
+                </section>
 
-                {/* Skills - Matrix View */}
-                {skills && skills.length > 0 && (
+                {/* Skills */}
+                {skills && (skills.length > 0 || isInteractive) && (
                     <section>
                         <SectionTitle title="Technical Matrix" />
                         <div className="space-y-2">
-                            {skills.map((cat) => (
+                            {skills.length > 0 ? skills.map((cat) => (
                                 <div key={cat.id} className="text-[9.5pt]">
-                                    <span className="font-extrabold text-slate-900 uppercase tracking-wider mr-2">{cat.name}:</span>
-                                    <span className="text-slate-800 font-medium">{cat.skills.join(', ')}</span>
+                                    <span className={`font-extrabold uppercase tracking-wider mr-2 ${cat.name.startsWith('[') || cat.name.includes('New Domain') ? 'text-slate-400' : 'text-slate-900'}`}>{cat.name}:</span>
+                                    <span className={`font-medium ${cat.skills.length === 0 ? 'text-slate-400 italic' : 'text-slate-800'}`}>
+                                        {cat.skills.length > 0 ? cat.skills.join(', ') : (isInteractive ? '[Add skills...]' : '')}
+                                    </span>
                                 </div>
-                            ))}
+                            )) : isInteractive && (
+                                <p className="text-[9pt] italic text-slate-400">Add skill categories in the editor.</p>
+                            )}
                         </div>
                     </section>
                 )}
 
                 {/* Education */}
-                {education.length > 0 && (
+                {(education.length > 0 || isInteractive) && (
                     <section>
                         <SectionTitle title="Education" />
                         <div className="space-y-3">
-                            {education.map((edu) => (
+                            {education.length > 0 ? education.map((edu) => (
                                 <div key={edu.id} className="flex justify-between items-baseline">
                                     <div className="text-[10pt]">
-                                        <span className="font-extrabold text-slate-900">{edu.institution}</span>
+                                        <span className={`font-extrabold ${edu.institution.startsWith('[') ? 'text-slate-400' : 'text-slate-900'}`}>{edu.institution}</span>
                                         <span className="mx-2 text-slate-400">|</span>
-                                        <span className="font-bold text-slate-700 italic">{edu.degree}</span>
+                                        <span className={`font-bold italic ${edu.degree.startsWith('[') ? 'text-slate-400' : 'text-slate-700'}`}>{edu.degree}</span>
                                     </div>
                                     <span className="text-[9pt] font-black text-slate-500 uppercase tracking-widest">{edu.graduationDate}</span>
                                 </div>
-                            ))}
+                            )) : isInteractive && (
+                                <p className="text-[9pt] italic text-slate-400">Add education details in the editor.</p>
+                            )}
                         </div>
                     </section>
                 )}
             </div>
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                @media print {
+                    .no-export {
+                        display: none !important;
+                    }
+                }
+                @media screen {
+                    .no-export {
+                        display: flex !important;
+                    }
+                }
+            `}} />
         </div>
     );
 };

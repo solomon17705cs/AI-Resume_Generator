@@ -17,11 +17,11 @@ const wordCount = (text: string) => text.trim().split(/\s+/).length;
 
 // Experience Bullet Schema
 export const ExperienceBulletSchema = z.string()
-    .min(10, "Bullet too short - must be at least 10 characters")
-    .max(200, "Bullet too long - max 200 characters")
+    .min(5, "Bullet too short")
+    .max(500, "Bullet too long")
     .refine(
-        (text) => wordCount(text) <= BULLET_MAX_WORDS,
-        `Bullet must be ≤ ${BULLET_MAX_WORDS} words`
+        (text) => wordCount(text) <= 50,
+        "Bullet must be ≤ 50 words"
     )
     .refine(
         (text) => /^[A-Z]/.test(text),
@@ -40,8 +40,8 @@ export const ExperienceEntrySchema = z.object({
     startDate: z.string().regex(/^\d{4}-\d{2}$/, "Format: YYYY-MM"),
     endDate: z.string().regex(/^(\d{4}-\d{2}|Present)$/, "Format: YYYY-MM or 'Present'"),
     bullets: z.array(ExperienceBulletSchema)
-        .min(2, "At least 2 bullets required")
-        .max(5, "Maximum 5 bullets per role")
+        .min(1, "At least 1 bullet required")
+        .max(10, "Maximum 10 bullets per role")
 });
 
 // Project Schema
@@ -66,11 +66,11 @@ export const SkillCategorySchema = z.object({
 
 // Professional Summary Schema
 export const SummarySchema = z.string()
-    .min(50, "Summary too short - minimum 50 characters")
-    .max(400, "Summary too long - maximum 400 characters")
+    .min(20, "Summary too short")
+    .max(1000, "Summary too long")
     .refine(
-        (text) => wordCount(text) <= SUMMARY_MAX_WORDS,
-        `Summary must be ≤ ${SUMMARY_MAX_WORDS} words`
+        (text) => wordCount(text) <= 150,
+        "Summary must be ≤ 150 words"
     )
     .refine(
         (text) => !text.toLowerCase().includes('i am') && !text.toLowerCase().includes("i'm"),
@@ -101,7 +101,7 @@ export function validateAIResume(data: unknown): { success: true; data: AIGenera
     } else {
         return {
             success: false,
-            errors: result.error.errors.map(err => `${err.path.join('.')}: ${err.message}`)
+            errors: result.error.issues.map((err: any) => `${err.path.join('.')}: ${err.message}`)
         };
     }
 }

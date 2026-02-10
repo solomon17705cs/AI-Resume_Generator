@@ -1,4 +1,5 @@
 import { ResumeData, Experience } from '../types/resume';
+import { detectRoleCategory, CS_SEMANTIC_KEYWORDS } from './csSemanticKeywords';
 
 // 1. Keyword Gap Analysis & Prioritization
 export const calculateKeywordPriority = (missing: string[], jobDescription: string) => {
@@ -45,28 +46,56 @@ export const SECTION_TEMPLATES: Record<string, string[]> = {
 
 export const detectIndustry = (jobDescription: string): string => {
     const jd = jobDescription.toLowerCase();
+
+    // First check for specialized industries
     if (jd.includes('defence') || jd.includes('naval') || jd.includes('military') || jd.includes('unmanned')) return 'defence';
     if (jd.includes('finance') || jd.includes('trading') || jd.includes('quant') || jd.includes('banking')) return 'finance';
+
+    // Then check for role-based categories
+    const role = detectRoleCategory(jobDescription);
+    if (role !== 'generic') return role;
+
     if (jd.includes('software') || jd.includes('developer') || jd.includes('engineer') || jd.includes('tech')) return 'tech';
     return 'generic';
 };
 
 // 3. Semantic Relevance Fixer (Rule-based)
 export const applySemanticRules = (text: string, industry: string): string => {
-    if (industry === 'defence') {
-        return text
-            .replace(/designing and developing/gi, 'engineering defence-grade systems for')
-            .replace(/digital systems/gi, 'unmanned systems and UUVs')
-            .replace(/worked on/gi, 'spearheaded development of')
-            .replace(/responsible for/gi, 'orchestrated mission-critical');
-    }
-    if (industry === 'tech') {
-        return text
-            .replace(/worked on/gi, 'architected and deployed')
-            .replace(/handled/gi, 'engineered scalable solutions for')
-            .replace(/fast/gi, 'performant and low-latency');
-    }
-    return text;
+    const rules: Record<string, [RegExp, string][]> = {
+        defence: [
+            [/designing and developing/gi, 'engineering defence-grade systems for'],
+            [/digital systems/gi, 'unmanned systems and UUVs'],
+            [/worked on/gi, 'spearheaded development of'],
+            [/responsible for/gi, 'orchestrated mission-critical']
+        ],
+        tech: [
+            [/worked on/gi, 'architected and deployed'],
+            [/handled/gi, 'engineered scalable solutions for'],
+            [/fast/gi, 'performant and low-latency']
+        ],
+        frontend: [
+            [/worked on UI/gi, 'Engineered component-based UI architectures'],
+            [/made it responsive/gi, 'Optimized for cross-platform responsive design'],
+            [/fixed bugs/gi, 'Refactored codebase to improve frontend performance']
+        ],
+        backend: [
+            [/wrote APIs/gi, 'Engineered high-throughput RESTful APIs'],
+            [/managed database/gi, 'Optimized database design and query performance'],
+            [/handled security/gi, 'Implemented robust authentication and authorization']
+        ],
+        ml: [
+            [/trained models/gi, 'Optimized model training and hyperparameter tuning'],
+            [/cleaned data/gi, 'Performed extensive data preprocessing for neural networks'],
+            [/used AI/gi, 'Architected deep learning solutions for complex problem solving']
+        ]
+    };
+
+    const industryRules = rules[industry] || rules.tech;
+    let optimizedText = text;
+    industryRules.forEach(([regex, replacement]) => {
+        optimizedText = optimizedText.replace(regex, replacement);
+    });
+    return optimizedText;
 };
 
 // 4. Content Compression Engine
