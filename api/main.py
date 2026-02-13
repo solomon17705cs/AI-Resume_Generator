@@ -35,24 +35,24 @@ stop_words = set(stopwords.words('english'))
 
 CS_SEMANTIC_KEYWORDS = {
     'frontend': [
-        'React', 'JavaScript', 'TypeScript', 'UI components', 'state management',
-        'performance optimization', 'web accessibility', 'responsive design',
-        'component-based architecture', 'frontend performance'
+        'JavaScript Developer', 'Frontend Engineer', 'JavaScript ES6+', 'React', 'TypeScript',
+        'Component-based architecture', 'State management', 'Responsive Design',
+        'Performance optimization', 'Designed and implemented', 'Developed responsive UI'
     ],
     'backend': [
-        'REST APIs', 'microservices', 'database optimization', 'authentication',
-        'server-side logic', 'distributed systems', 'SQL', 'NoSQL', 'API integration',
-        'backend development', 'database design', 'scalable systems'
+        'Node.js Developer', 'Backend Engineer', 'JavaScript ES6+', 'Node.js', 'RESTful APIs',
+        'Microservices architecture', 'Database optimization', 'Scalable systems',
+        'Architected backend services', 'Integrated API endpoints'
     ],
     'ml': [
-        'machine learning', 'deep learning', 'model training', 'data preprocessing',
-        'neural networks', 'model evaluation', 'AI engineering', 'computer vision',
-        'natural language processing'
+        'ML Engineer', 'AI Developer', 'Python', 'PyTorch', 'TensorFlow',
+        'Neural networks', 'Model training', 'Data preprocessing',
+        'Engineered ML models', 'Optimized model performance'
     ],
     'generic': [
-        'software engineering', 'data structures', 'algorithms',
-        'object-oriented programming', 'system design', 'problem-solving',
-        'code optimization', 'scalable systems', 'API design', 'database management'
+        'Software Engineer', 'Computer Science', 'Data structures', 'Algorithms',
+        'System design', 'Code optimization', 'Object-oriented programming',
+        'Engineered robust solutions', 'Implemented optimized algorithms'
     ]
 }
 

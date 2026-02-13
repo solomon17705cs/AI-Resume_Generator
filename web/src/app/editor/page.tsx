@@ -220,15 +220,15 @@ export default function EditorPage() {
                 console.log('📡 Fetching repos from API...');
                 const res = await axios.get('/api/github/repos');
                 console.log('✅ Repos fetched:', res.data);
-                
+
                 // Update the store with the fetched repos
                 setGitHubRepos(res.data);
             }
-            
+
             // Now sync the projects from the repos
             console.log('🎯 Syncing projects from repos...');
             syncProjectsFromGitHub();
-            
+
             alert('✅ GitHub projects synced! Your repositories have been added to your resume.');
         } catch (err: any) {
             console.error('❌ Failed to sync GitHub projects:', err);
@@ -247,15 +247,15 @@ export default function EditorPage() {
                 console.log('📡 Fetching repos from API...');
                 const res = await axios.get('/api/github/repos');
                 console.log('✅ Repos fetched:', res.data);
-                
+
                 // Update the store with the fetched repos
                 setGitHubRepos(res.data);
             }
-            
+
             // Now sync the languages from the repos
             console.log('🎯 Syncing languages from repos...');
             syncLanguagesFromGitHub();
-            
+
             alert('✅ GitHub skills synced! Programming languages have been added to your resume.');
         } catch (err: any) {
             console.error('❌ Failed to sync GitHub skills:', err);
@@ -366,9 +366,17 @@ export default function EditorPage() {
 
                         {/* Sync Engine Terminal */}
                         <div className="space-y-4">
-                            <div className="flex items-center gap-2 text-slate-500">
-                                <BrainCircuit size={16} className="text-cyan-400" />
-                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em]">Job Sync</h3>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2 text-slate-500">
+                                    <BrainCircuit size={16} className="text-cyan-400" />
+                                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em]">Job Sync</h3>
+                                </div>
+                                <button
+                                    onClick={() => setJobContext(`Role: Senior Frontend Engineer\nCompany: TechFlow Systems\nStack: React, TypeScript, Node.js, AWS\n\nResponsibilities:\n- Lead the architecture of high-scale user interfaces using modern React and TypeScript.\n- Optimize application performance for faster render times and 100% desktop/mobile accessibility.\n- Collaborate with cross-functional teams to integrate RESTful APIs and state management solutions.\n- Drive technical excellence by refactoring legacy codebases and implementing unit tests.\n- Engineer scalable systems using component-based architecture and cloud-native services.`, jobUrl)}
+                                    className="text-[8px] font-black text-blue-500 uppercase tracking-widest hover:text-blue-400 underline transition-colors"
+                                >
+                                    Load Example JD
+                                </button>
                             </div>
                             <div className="space-y-3">
                                 <input
@@ -1048,7 +1056,7 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                     </div>
                     <div className="flex-1 overflow-auto p-12 bg-[#020617] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] flex justify-center custom-scrollbar">
                         <div
-                            className="drop-shadow-[0_40px_80px_rgba(0,0,0,0.9)] mb-40 rounded-lg border border-white/5 bg-white transition-all duration-200"
+                            className="drop-shadow-[0_40px_80px_rgba(0,0,0,0.9)] mb-40 rounded-lg border border-white/5 transition-all duration-200 overflow-visible"
                             style={{
                                 width: '210mm',
                                 minWidth: '210mm',
@@ -1111,7 +1119,7 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                                 animate={{ scale: 1, opacity: 1 }}
                                 exit={{ scale: 0.95, opacity: 0 }}
                                 transition={{ duration: 0.2 }}
-                                className="drop-shadow-[0_40px_120px_rgba(0,0,0,0.9)] rounded-lg border border-white/10 bg-white"
+                                className="drop-shadow-[0_40px_120px_rgba(0,0,0,0.9)] rounded-lg border border-white/10"
                                 style={{
                                     width: '210mm',
                                     minHeight: '297mm',

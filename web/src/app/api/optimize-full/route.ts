@@ -52,60 +52,52 @@ export async function POST(req: NextRequest) {
             You are an elite ATS Optimization Engine (Transformation Mode).
             Targeting a score improvement from ~20 to 90+.
 
+            [STRICT NO-HALLUCINATION POLICY]
+            1. DO NOT ADD ANY NEW COMPANIES, JOBS, OR PROJECTS.
+            2. DO NOT ADD ANY NEW EXPERIENCE ENTRIES.
+            3. The number of entries in the "experience" and "projects" arrays MUST remain EXACTLY the same as the input.
+            4. DO NOT invent professional work experience or job titles.
+            5. ONLY optimize the 'bullets', 'summary', and 'skills' of the provided resume.
+
             [DYNAMIC KEYWORD-ADAPTATION PIPELINE]
             1. JD KEYWORD EXTRACTION:
-               - From the Job Description, extract: Hard Skills (Languages, Frameworks, Tools), Concepts/Responsibilities, and Role Level.
-               - DO NOT use a fixed list; extract what is actually in the JD.
+               - From the Job Description, extract hard skills and concepts.
+            
+            2. SEMANTIC INJECTION (MANDATORY):
+               - Integrate these specific semantic keywords: ${topHighPriority}.
+               - Apply ATS Weighting: Role (35%), Core Tech (25%), Concepts (20%), Action Phrases (15%).
+               - Use "ES6+" style notation (e.g., JavaScript ES6+).
+               - AVOID filler words: "Proficiency in", "Experienced with", "Helpful for".
+               - Focus on "weaving" these into existing bullet points naturally.
 
-            2. ROLE CLASSIFICATION:
-               - Identify if this is primarily ${roleCategory.toUpperCase()} (Backend, Frontend, Full Stack, or AI/ML).
+            3. STRATEGIC INJECTION (ATS-SAFE):
+               - SUMMARY: Place the Role Title and 3-4 top matched keywords. Max 60 words.
+               - EXPERIENCE: Inject JD-specific keywords into EXISTING bullets using the action-verb style.
+               - PROJECTS: Expand EXISTING project bullets using technical keywords from the JD.
 
-            3. USER SKILL VALIDATION & CROSS-MATCHING:
-               - Compare extracted JD skills with candidate skills: ${userSkills.join(', ')}.
-               - RULE: Only include keywords if the candidate has the underlying skill or it's a legitimate semantic expansion.
-               - SEMANTIC EXPANSION: You may expand "Node.js" to "server-side JavaScript environments" or "SQL" to "relational database architecture" if it helps ATS matching.
-
-            4. STRATEGIC INJECTION (ATS-SAFE):
-               - SUMMARY (20%): Place the Role Title and 3-4 top matched keywords. Max 40 words.
-               - EXPERIENCE (60%): Inject 1-2 JD-specific keywords per bullet using the XYZ formula:
-                 "Action (Strong Verb) + Plausible Metric + Technology (extracted from JD)".
-               - SKILLS (20%): Ensure a clean, categorized list (Languages, Tools, Frameworks).
-
-            5. FINAL VALIDATION:
-               - Section headers must be: ${targetSections.join(', ')}.
-               - No Hallucination: Do not add tools the user hasn't listed or that aren't closely related concepts.
-               - CANDIDATE LEVEL: ${expLevel}. 
+            4. FINAL VALIDATION:
+               - Section headers must be standard: ${targetSections.join(', ')}.
+               - CANDIDATE LEVEL: ${expLevel}.
                ${expLevel === 'FRESHER' ? `
                - FRESHER RULES:
-                 1. Do NOT invent professional work experience or job titles (like "Senior Architect").
-                 2. Focus the summary on academic achievements and potential.
-                 3. If the user has no work history, expand the "TECHNICAL PROJECTS" section using the provided projects.
-                 4. Treat academic projects as the primary source of technical proof.
-               ` : `
-               - EXPERIENCED RULES:
-                 1. Focus on industry impact, leadership, and multi-year tenure.
-                 2. Use metrics that reflect business value (revenue, user growth, latency).
-               `}
-               - Tone: Professional Software Engineering.
-
-            [PLATFORM CONFIGURATION: ${atsProfile.name}]
-            - Optimization Strategy: ${atsProfile.optimizationStrategy.bulletStyle}
-            - Rules: ${(atsProfile.rules || []).join(', ')}
+                 1. Focus on academic achievements and potential.
+                 2. Rename experience to "Academic & Professional Experience" if needed, but do not invent work history.
+               ` : ''}
 
             [INPUT DATA]
-            Job: "${jobDescription.substring(0, 3000)}"
+            Job: "${jobDescription.substring(0, 2500)}"
             Resume: ${JSON.stringify(resume)}
 
             [OUTPUT]
             Return ONLY a valid JSON of the updated ResumeData object.
-            Do not include any conversational text.
+            Ensure the structure matches exactly.
         `;
 
         const response = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
             model: 'meta-llama/llama-3.3-70b-instruct',
             messages: [{ role: 'user', content: prompt }],
             response_format: { type: 'json_object' },
-            temperature: 0.1
+            temperature: 0.0 // Set to 0.0 for maximum consistency and deterministic output
         }, {
             headers: {
                 'Authorization': `Bearer ${API_KEY}`,

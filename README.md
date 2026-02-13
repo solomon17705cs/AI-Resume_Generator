@@ -1,90 +1,138 @@
-# ATSense: Advanced Resume Intelligence (SaaS V1)
+# 🚀 ATSense: The High-Performance Resume Engineering Engine
 
-ATSense is a high-performance career engineering platform. Unlike simple builders, it treats resumes as **architectural data**, ensuring verified alignment with top-tier hiring algorithms.
+![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![AI](https://img.shields.io/badge/AI-Generated-blueviolet?style=for-the-badge)
 
-## 🧠 Mission Core
-- **Job-Driven**: Every optimization is synced to a specific Job Description.
-- **Explainable AI**: No black-box scores. Every percentage is backed by a "Reasoning Report".
-- **Versioned Intelligence**: History tracking for every role you apply for.
-
-## 🛠️ The Advanced Tech Stack
-- **Frontend**: Next.js (App Router), TypeScript, Tailwind CSS, Framer Motion.
-- **State Management**: Zustand (Zustand) for real-time JSON resume state.
-- **Backend intelligence**: 
-  - **Node.js**: API Gateway & Puppeteer PDF Generation.
-  - **Python (FastAPI)**: Semantic analysis via `sentence-transformers`, `KeyBERT`, and `spaCy`.
-- **AI Orchestration**: 
-  - **LLaMA 3.1 & Claude 3.5** (via OpenRouter) for intelligent bullet rewriting using the XYZ formula.
+ATSense is not just a resume builder; it’s a **Career Engineering Platform**. It treats resumes as a structured data problem, ensuring that every bullet point, skill, and summary is mathematically optimized for Applicant Tracking Systems (ATS).
 
 ---
 
-## 🏗️ Technical Architecture (Explain this to the Jury)
+## 🧠 Core Intelligence Features
 
-> "ATSense separates **Presentation** from **Intelligence**. 
-> We store the resume as a structured JSON schema, which is sent to our Python NLP service. 
-> This service calculates **Vector Similarity** between the resume and the Job Description, while our AI models perform **Impact Factoring** on individual bullet points. 
-> The final PDF is not 'printed', but **engineered** via Puppeteer to be 100% machine-readable."
+### 1. **Neural Optimization Engine (V2)**
+Our core logic uses a "Strict No-Hallucination" policy. It doesn't invent fake jobs; it performs **Semantic Weaving** to integrate job-specific keywords into your *actual* history.
+- **ATS Weighting Logic**: Prioritizes Role (35%), Core Tech (25%), Concepts (20%), and Action Phrases (15%).
+- **Semantic Expansion**: Automatically suggests related tech (e.g., expanding "JavaScript" to "JavaScript ES6+" for modern JD matching).
+
+### 2. **Multi-Signal ATS Detection**
+Automatically detects which ATS a company is using (Workday, Greenhouse, Lever, etc.) based on the Job URL or description, and adjusts the PDF schema and keyword density to match that specific algorithm's preferences.
+
+### 3. **Dynamic Experience Layouts**
+- **Fresher Mode**: Automatically repositions Education and Projects to the top for entry-level candidates.
+- **Professional Mode**: Focuses on high-impact metrics and multi-year job tenure.
+- **Academic & Professional Blend**: Specially designed for students with internships.
+
+### 4. **GitHub & LinkedIn Integration**
+- **Skill Sync**: One-click extraction of your most-used languages from your GitHub profile.
+- **Project Import**: Automatically builds technical project cards from your public repositories.
 
 ---
 
-## 🚀 Installation & Setup
+## 🛠️ The Tech Stack
 
-Follow these steps to get the full ATSense environment running on your local machine.
+### **Flagship Web (Frontend)**
+- **Framework**: Next.js 14 (App Router)
+- **State**: Zustand (Atomic state management for the JSON Resume Schema)
+- **Styling**: Tailwind CSS + Framer Motion (Glassmorphism UI)
+- **PDF Core**: Puppeteer-based headless rendering for 100% machine-readable exports.
 
-### 1. Intelligence Engine (Python Backend)
-The backend handles semantic analysis, keyword extraction, and vector matching.
+### **Intelligence Engine (Backend)**
+- **Language**: Python 3.10+ (FastAPI)
+- **NLP**: `KeyBERT` for keyword extraction and `Sentence-Transformers` for vector similarity.
+- **Models**: LLaMA 3.3-70B & GPT-4o-mini (via OpenRouter API).
 
+---
+
+## 🚀 Installation Guide
+
+### **1. Prerequisites**
+- Node.js (v18+)
+- Python (v3.9+)
+- OpenRouter API Key
+
+### **2. Setup the Python Engine**
 ```bash
-# Navigate to api directory
 cd api
-
-# Create a virtual environment
 python3 -m venv venv
-
-# Activate the environment
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install core dependencies
-pip install fastapi uvicorn spacy keybert sentence-transformers pydantic "urllib3<2"
-
-# Download the required NLP model
-python3 -m spacy download en_core_web_sm # else try this ```pip install spacy keybert sentence-transformers fastapi uvicorn pydantic "urllib3<2"```
-
-# Launch the engine (on port 8001)
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt  # If requirements.txt exists, or manual install:
+pip install fastapi uvicorn keybert sentence-transformers spacy pydantic "urllib3<2"
+python3 -m spacy download en_core_web_sm
 python3 main.py
 ```
+*The engine will run on `http://localhost:8001`.*
 
-### 2. Web Flagship (Next.js Frontend)
-The frontend manages the state, real-time preview, and AI-powered editing.
-
+### **3. Setup the Web Flagship**
 ```bash
-# Navigate to web directory
 cd web
-
-# Install npm packages
 npm install
-
-# Configure Environment Variables
-# Create a .env.local file and add your keys:
-# OPENROUTER_API_KEY=your_key_here
-# PYTHON_API_URL=http://localhost:8001
-
-# Start the development server
-npm run dev
 ```
 
-### 3. Usage & Access
-*   **Web Portal**: [http://localhost:3000](http://localhost:3000)
-*   **Editor**: [http://localhost:3000/editor](http://localhost:3000/editor)
-*   **API Health**: [http://localhost:8001](http://localhost:8001)
+Create a `.env.local` in the `web` directory:
+```env
+OPENROUTER_API_KEY=your_key_here
+NEXT_PUBLIC_API_URL=http://localhost:8001
+```
+
+```bash
+npm run dev
+```
+*The portal will be available at `http://localhost:3000`.*
 
 ---
 
-## 🚦 Phase 2: Operations
-1. Paste a Job Description in the **Sync Terminal**.
-2. Click **"Launch Analysis"** to see your Match Forensics.
-3. Use the **Sparkles (AI)** button on any bullet point to rewrite it using the XYZ Formula.
-4. Export the resulting **Engineered PDF** for application.
+## 📖 How to Use (Step-by-Step for New Users)
+
+### **Step 1: Onboarding**
+- **Login/Register**: Create an account or use "Demo Login" (if enabled). We recommend linking your GitHub account during registration for automatic skill extraction.
+
+### **Step 2: Sync the Target Job**
+- Navigate to the **Editor**.
+- On the left sidebar, paste the **Job Description** (or Job URL) you are targeting.
+- Click **"Launch Analysis"**. The system will scan the JD and calculate your current score against it.
+
+### **Step 3: Neural Optimization**
+- Click **"Magic Optimization"**.
+- Watch as the AI performs the "High-ATS" weighting, weaving specific phrases into your existing EXPERIENCE and SUMMARY sections.
+- *Note*: It will never invent professional history. It only refines what you’ve provided.
+
+### **Step 4: Real-Time Refinement**
+- Use the **AI Writer** in the Summary tab to generate a targeted professional bio.
+- Use the **Sparkles** icons on any bullet point to refine individual sentences using the **XYZ Formula** (Action Verb + Metric + Technical Implementation).
+
+### **Step 5: Exporting**
+- Once the **ATS Score Gauge** reaches 85%+, click **"Export PDF"**.
+- The system will generate an **Engineered PDF** that is optimized for parsing by Workday, Greenhouse, and other top-tier systems.
 
 ---
-Built by Solomon @ Y Hackathon 2026.
+
+## 📁 Project Structure
+
+```text
+├── api/                # Python NLP Intelligence Service
+│   ├── main.py         # FastAPI Entry point
+│   └── ...             # Semantic models and logic
+├── web/                # Next.js Application
+│   ├── src/
+│   │   ├── app/        # Pages and API Routes
+│   │   ├── components/ # UI Components (Editor, Preview, etc.)
+│   │   ├── store/      # Zustand State (Resume JSON Schema)
+│   │   └── utils/      # ATS Profiles, Prompts, and Logic
+└── README.md
+```
+
+---
+
+## 🚦 Troubleshooting
+
+1. **"Neural Core Offline"**: Ensure the Python backend is running on port 8001. Check CORS settings in `api/main.py`.
+2. **AI not responding**: Verify your `OPENROUTER_API_KEY` has active credits.
+3. **Empty PDF**: Ensure `Puppeteer` is installed correctly (`npm install puppeteer`).
+
+---
+
+Built with ❤️ by **Solomon K**
+*Engineering the future of career intelligence.*

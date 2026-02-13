@@ -86,7 +86,7 @@ export const Preview: React.FC<PreviewProps> = ({ data, scale = 1, jobDescriptio
 
     return (
         <div
-            className="text-slate-900 origin-top-left"
+            className="text-slate-900 origin-top-left bg-white rounded-lg shadow-xl"
             style={{
                 width: '210mm',
                 minHeight: '297mm',
@@ -113,105 +113,140 @@ export const Preview: React.FC<PreviewProps> = ({ data, scale = 1, jobDescriptio
                     </div>
                 </header>
 
-                {/* Executive Summary */}
-                <section>
-                    <SectionTitle title="Executive Summary" />
-                    <p className={`text-[10pt] leading-[1.6] text-justify font-medium ${!summary ? 'text-slate-400 italic' : 'text-slate-800'}`}>
-                        {summary || '[Write a brief high-impact summary here. Highlight your years of experience, core technical stack, and your most significant achievement or specialization.]'}
-                    </p>
-                </section>
+                {/* Content Sections - Order and styling depends on experience level */}
+                {(() => {
+                    const hasProjects = projects.length > 0 && projects.some(p => p.name.trim() && !p.name.includes('['));
+                    const hasExperience = experience.length > 0 && experience.some(e => e.company.trim() && !e.company.includes('['));
+                    const isFresher = !hasProjects;
+                    const isEntryLevel = !hasExperience;
 
-                {/* Experience */}
-                <section className="space-y-4">
-                    <SectionTitle title="Professional Experience" />
-                    <div className="space-y-6">
-                        {experience.length > 0 ? experience.map((exp) => (
-                            <div key={exp.id} className="space-y-2">
-                                <div className="flex justify-between items-baseline">
-                                    <h3 className="font-extrabold text-[11pt] text-slate-900 tracking-tight">{exp.company || '[Company Name]'}</h3>
-                                    <span className="text-[9pt] font-black text-slate-500 uppercase tracking-widest">{exp.location || '[Location]'}</span>
-                                </div>
-                                <div className="flex justify-between items-baseline">
-                                    <span className="font-bold text-[10pt] text-blue-700 italic">{exp.role || '[Job Title]'}</span>
-                                    <span className="text-[9pt] font-bold text-slate-700">{exp.startDate || '[Start Date]'} – {exp.endDate || '[End Date]'}</span>
-                                </div>
-                                <ul className="list-disc list-outside ml-4 text-[9.5pt] space-y-1.5 text-slate-800">
-                                    {exp.bullets.length > 0 && exp.bullets.some(b => b.trim()) ? exp.bullets.map((bullet, idx) => (
-                                        bullet && <li key={idx} className="pl-2 leading-[1.4] font-medium">{bullet}</li>
-                                    )) : (
-                                        <li className="pl-2 leading-[1.4] font-medium text-slate-400 italic">[Add your key accomplishments and impact here using metrics if possible]</li>
-                                    )}
-                                </ul>
-                            </div>
-                        )) : (
-                            <p className="text-[10pt] text-slate-400 italic font-medium">[No professional experience added yet. Add your work history in the editor.]</p>
-                        )}
-                    </div>
-                </section>
+                    const summarySection = (
+                        <section key="summary" className={isEntryLevel ? 'py-4' : ''}>
+                            <SectionTitle title="Executive Summary" />
+                            <p className={`${isEntryLevel ? 'text-[11pt] leading-[1.8]' : 'text-[10pt] leading-[1.6]'} text-justify font-medium ${!summary ? 'text-slate-400 italic' : 'text-slate-800'}`}>
+                                {summary || (isEntryLevel
+                                    ? '[As a dedicated entry-level professional, I offer a strong foundation in core technical domains and a passionate drive for innovative problem-solving. Driven by a commitment to technical excellence, I leverage my academic training and project experience to build high-quality, scalable applications that solve real-world challenges. My academic background and hands-on projects have equipped me with high-demand skills, which I am eager to apply towards achieving shared organizational goals. I am a fast learner, committed to continuous professional growth and delivering measurable impact in a collaborative team environment.]'
+                                    : '[Write a brief high-impact summary here. Highlight your years of experience, core technical stack, and your most significant achievement or specialization.]'
+                                )}
+                            </p>
+                        </section>
+                    );
 
-                {/* Projects Section */}
-                <section className="space-y-4">
-                    <SectionTitle title="Technical Projects" />
-                    <div className="space-y-4">
-                        {projects.length > 0 ? projects.map((proj) => (
-                            <div key={proj.id} className="space-y-1">
-                                <div className="flex justify-between items-baseline">
-                                    <h3 className="font-extrabold text-[10pt] text-slate-900 uppercase tracking-tight">{proj.name || '[Project Name]'}</h3>
-                                    {proj.link && <span className="text-[8pt] font-bold text-blue-700 underline italic lowercase">{proj.link}</span>}
-                                </div>
-                                <ul className="list-disc list-outside ml-4 text-[9pt] space-y-1 text-slate-700">
-                                    {proj.bullets.length > 0 && proj.bullets.some(b => b.trim()) ? proj.bullets.map((bullet, idx) => (
-                                        bullet && <li key={idx} className="pl-2 leading-[1.3] font-medium">{bullet}</li>
-                                    )) : (
-                                        <li className="pl-2 leading-[1.3] font-medium text-slate-400 italic">[Describe your technical contribution and the technologies used]</li>
-                                    )}
-                                </ul>
-                            </div>
-                        )) : (
-                            <p className="text-[9pt] text-slate-400 italic font-medium">[Add technical projects to showcase your skills outside of work history]</p>
-                        )}
-                    </div>
-                </section>
-
-                {/* Skills */}
-                {skills && (skills.length > 0 || isInteractive) && (
-                    <section>
-                        <SectionTitle title="Technical Matrix" />
-                        <div className="space-y-2">
-                            {skills.length > 0 ? skills.map((cat) => (
-                                <div key={cat.id} className="text-[9.5pt]">
-                                    <span className={`font-extrabold uppercase tracking-wider mr-2 ${cat.name.startsWith('[') || cat.name.includes('New Domain') ? 'text-slate-400' : 'text-slate-900'}`}>{cat.name}:</span>
-                                    <span className={`font-medium ${cat.skills.length === 0 ? 'text-slate-400 italic' : 'text-slate-800'}`}>
-                                        {cat.skills.length > 0 ? cat.skills.join(', ') : (isInteractive ? '[Add skills...]' : '')}
-                                    </span>
-                                </div>
-                            )) : isInteractive && (
-                                <p className="text-[9pt] italic text-slate-400">Add skill categories in the editor.</p>
-                            )}
-                        </div>
-                    </section>
-                )}
-
-                {/* Education */}
-                {(education.length > 0 || isInteractive) && (
-                    <section>
-                        <SectionTitle title="Education" />
-                        <div className="space-y-3">
-                            {education.length > 0 ? education.map((edu) => (
-                                <div key={edu.id} className="flex justify-between items-baseline">
-                                    <div className="text-[10pt]">
-                                        <span className={`font-extrabold ${edu.institution.startsWith('[') ? 'text-slate-400' : 'text-slate-900'}`}>{edu.institution}</span>
-                                        <span className="mx-2 text-slate-400">|</span>
-                                        <span className={`font-bold italic ${edu.degree.startsWith('[') ? 'text-slate-400' : 'text-slate-700'}`}>{edu.degree}</span>
+                    const educationSection = (
+                        <section key="education">
+                            <SectionTitle title="Education" />
+                            <div className="space-y-3">
+                                {education.length > 0 ? education.map((edu) => (
+                                    <div key={edu.id} className="flex justify-between items-baseline">
+                                        <div className="text-[10pt]">
+                                            <span className={`font-extrabold ${edu.institution.startsWith('[') ? 'text-slate-400' : 'text-slate-900'}`}>{edu.institution}</span>
+                                            <span className="mx-2 text-slate-400">|</span>
+                                            <span className={`font-bold italic ${edu.degree.startsWith('[') ? 'text-slate-400' : 'text-slate-700'}`}>{edu.degree}</span>
+                                        </div>
+                                        <span className="text-[9pt] font-black text-slate-500 uppercase tracking-widest">{edu.graduationDate}</span>
                                     </div>
-                                    <span className="text-[9pt] font-black text-slate-500 uppercase tracking-widest">{edu.graduationDate}</span>
-                                </div>
-                            )) : isInteractive && (
-                                <p className="text-[9pt] italic text-slate-400">Add education details in the editor.</p>
-                            )}
-                        </div>
-                    </section>
-                )}
+                                )) : isInteractive && (
+                                    <p className="text-[9pt] italic text-slate-400">Add education details in the editor.</p>
+                                )}
+                            </div>
+                        </section>
+                    );
+
+                    const experienceSection = (
+                        <section key="experience" className="space-y-4">
+                            <SectionTitle title={isFresher ? "Academic & Professional Experience" : "Professional Experience"} />
+                            <div className="space-y-6">
+                                {experience.length > 0 ? experience.map((exp) => (
+                                    <div key={exp.id} className="space-y-2">
+                                        <div className="flex justify-between items-baseline">
+                                            <h3 className="font-extrabold text-[11pt] text-slate-900 tracking-tight">{exp.company || '[Company Name]'}</h3>
+                                            <span className="text-[9pt] font-black text-slate-500 uppercase tracking-widest">{exp.location || '[Location]'}</span>
+                                        </div>
+                                        <div className="flex justify-between items-baseline">
+                                            <span className="font-bold text-[10pt] text-blue-700 italic">{exp.role || '[Job Title]'}</span>
+                                            <span className="text-[9pt] font-bold text-slate-700">{exp.startDate || '[Start Date]'} – {exp.endDate || '[End Date]'}</span>
+                                        </div>
+                                        <ul className="list-disc list-outside ml-4 text-[9.5pt] space-y-1.5 text-slate-800">
+                                            {exp.bullets.length > 0 && exp.bullets.some(b => b.trim()) ? exp.bullets.map((bullet, idx) => (
+                                                bullet && <li key={idx} className="pl-2 leading-[1.4] font-medium">{bullet}</li>
+                                            )) : (
+                                                <li className="pl-2 leading-[1.4] font-medium text-slate-400 italic">[Add your key accomplishments and impact here using metrics if possible]</li>
+                                            )}
+                                        </ul>
+                                    </div>
+                                )) : (
+                                    <p className="text-[10pt] text-slate-400 italic font-medium">[No professional experience added yet. Add your work history in the editor.]</p>
+                                )}
+                            </div>
+                        </section>
+                    );
+
+                    const projectsSection = (hasProjects || isInteractive) && (
+                        <section key="projects" className="space-y-4">
+                            <SectionTitle title="Technical Projects" />
+                            <div className="space-y-4">
+                                {projects.length > 0 ? projects.map((proj) => (
+                                    <div key={proj.id} className="space-y-1">
+                                        <div className="flex justify-between items-baseline">
+                                            <h3 className="font-extrabold text-[10pt] text-slate-900 uppercase tracking-tight">{proj.name || '[Project Name]'}</h3>
+                                            {proj.link && <span className="text-[8pt] font-bold text-blue-700 underline italic lowercase">{proj.link}</span>}
+                                        </div>
+                                        <ul className="list-disc list-outside ml-4 text-[9pt] space-y-1 text-slate-700">
+                                            {proj.bullets.length > 0 && proj.bullets.some(b => b.trim()) ? proj.bullets.map((bullet, idx) => (
+                                                bullet && <li key={idx} className="pl-2 leading-[1.3] font-medium">{bullet}</li>
+                                            )) : (
+                                                <li className="pl-2 leading-[1.3] font-medium text-slate-400 italic">[Describe your technical contribution and the technologies used]</li>
+                                            )}
+                                        </ul>
+                                    </div>
+                                )) : (
+                                    <p className="text-[9pt] text-slate-400 italic font-medium">[Add technical projects to showcase your skills outside of work history]</p>
+                                )}
+                            </div>
+                        </section>
+                    );
+
+                    const skillsSection = skills && (skills.length > 0 || isInteractive) && (
+                        <section key="skills">
+                            <SectionTitle title="Technical Matrix" />
+                            <div className="space-y-2">
+                                {skills.length > 0 ? skills.map((cat) => (
+                                    <div key={cat.id} className="text-[9.5pt]">
+                                        <span className={`font-extrabold uppercase tracking-wider mr-2 ${cat.name.startsWith('[') || cat.name.includes('New Domain') ? 'text-slate-400' : 'text-slate-900'}`}>{cat.name}:</span>
+                                        <span className={`font-medium ${cat.skills.length === 0 ? 'text-slate-400 italic' : 'text-slate-800'}`}>
+                                            {cat.skills.length > 0 ? cat.skills.filter(s => s.trim()).join(', ') : (isInteractive ? '[Add skills...]' : '')}
+                                        </span>
+                                    </div>
+                                )) : isInteractive && (
+                                    <p className="text-[9pt] italic text-slate-400">Add skill categories in the editor.</p>
+                                )}
+                            </div>
+                        </section>
+                    );
+
+                    // Order building logic
+                    const sections: React.ReactElement[] = [summarySection];
+
+                    if (isEntryLevel) {
+                        // Entry-Level Order: Summary -> Education -> Projects -> Skills
+                        sections.push(educationSection);
+                        if ((hasProjects || isInteractive) && projectsSection) sections.push(projectsSection);
+                        if (skillsSection) sections.push(skillsSection);
+                    } else if (isFresher) {
+                        // Fresher (Pro but no projects) Order: Summary -> Education -> Experience -> Skills
+                        sections.push(educationSection);
+                        sections.push(experienceSection);
+                        if (skillsSection) sections.push(skillsSection);
+                    } else {
+                        // Professional Order: Summary -> Experience -> Projects -> Skills -> Education
+                        sections.push(experienceSection);
+                        if ((hasProjects || isInteractive) && projectsSection) sections.push(projectsSection);
+                        if (skillsSection) sections.push(skillsSection);
+                        sections.push(educationSection);
+                    }
+
+                    return sections;
+                })()}
             </div>
             <style dangerouslySetInnerHTML={{
                 __html: `

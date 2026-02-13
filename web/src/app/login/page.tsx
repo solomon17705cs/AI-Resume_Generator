@@ -145,8 +145,19 @@ export default function LoginPage() {
                         </div>
                     </div>
 
-                    <div className="text-center">
-                        <Link href="/" className="text-[10px] font-black text-slate-600 hover:text-slate-400 uppercase tracking-widest transition-colors">
+                    {loginType === 'user' && (
+                        <div className="text-center">
+                            <p className="text-[10px] uppercase font-black tracking-widest text-slate-500">
+                                Don't have an account?{" "}
+                                <Link href="/register" className="text-blue-400 hover:text-blue-300 transition-colors ml-1">
+                                    Register Now
+                                </Link>
+                            </p>
+                        </div>
+                    )}
+
+                    <div className="text-center pt-2">
+                        <Link href="/" className="text-[10px] font-black text-slate-600 hover:text-slate-400 uppercase tracking-widest transition-colors text-center w-full block">
                             ← Return to System Core
                         </Link>
                     </div>

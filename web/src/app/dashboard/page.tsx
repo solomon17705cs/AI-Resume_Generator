@@ -174,6 +174,42 @@ export default function DashboardPage() {
                         </Link>
                     </header>
 
+                    {/* Quick Start Guide */}
+                    <section className="p-8 glass-dark border border-blue-500/20 rounded-[40px] bg-gradient-to-br from-blue-600/5 to-transparent relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <Compass size={120} className="text-blue-500 rotate-12" />
+                        </div>
+                        <div className="relative z-10 space-y-8">
+                            <div className="flex items-center gap-3">
+                                <Compass className="text-blue-500" size={24} />
+                                <h2 className="text-lg font-black uppercase tracking-widest text-white">System Onboarding: Quick Start</h2>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                <div className="space-y-3">
+                                    <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-xs font-black text-blue-400">01</div>
+                                    <h4 className="font-bold text-sm text-white">Sync Identity</h4>
+                                    <p className="text-[10px] text-slate-500 leading-relaxed font-bold uppercase tracking-widest">Connect GitHub to extract your tech stack and top projects automatically.</p>
+                                </div>
+                                <div className="space-y-3">
+                                    <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-xs font-black text-blue-400">02</div>
+                                    <h4 className="font-bold text-sm text-white">Paste Target JD</h4>
+                                    <p className="text-[10px] text-slate-500 leading-relaxed font-bold uppercase tracking-widest">Enter the Job Description in the Editor to calibrate the intelligence engine.</p>
+                                </div>
+                                <div className="space-y-3">
+                                    <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-xs font-black text-blue-400">03</div>
+                                    <h4 className="font-bold text-sm text-white">Magic Optimize</h4>
+                                    <p className="text-[10px] text-slate-500 leading-relaxed font-bold uppercase tracking-widest">Use Neural Transformation mode to weave semantic keywords into your resume bullets.</p>
+                                </div>
+                                <div className="space-y-3">
+                                    <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-xs font-black text-blue-400">04</div>
+                                    <h4 className="font-bold text-sm text-white">Engineered Export</h4>
+                                    <p className="text-[10px] text-slate-500 leading-relaxed font-bold uppercase tracking-widest">Download the 100% machine-readable PDF optimized for Workday, Greenhouse & Lever.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
                     {/* GitHub Integration Section */}
                     <section className="space-y-6">
                         <div className="flex justify-between items-center">

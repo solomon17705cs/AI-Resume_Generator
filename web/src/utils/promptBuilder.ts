@@ -118,15 +118,22 @@ Date Format: ${atsRules.dateFormat}
       : 'Focus on business impact, leadership, and multi-year professional achievements.'}
    - ${atsRules.requireMetrics ? 'MUST include metric (%, $, time, scale)' : 'Include metrics (e.g., "improved project efficiency by 15%")'}
    - No vague language ("various", "multiple", "several")
-   - Do NOT invent professional work history or job titles.
+   - Do NOT invent professional work history, corporate entities, or job titles. ONLY use provided data.
 
-6. KEYWORD STRATEGY:
-   - Target density: ${atsRules.keywordDensity}
-   - Repeat critical skills across sections
-   - Use exact phrases from job description
-   - Natural integration (no keyword stuffing)
-
+6. KEYWORD & PHRASE STRATEGY (CRITICAL):
+    - Target Weighting: Role (35%), Core Tech (25%), Concepts (20%), Action Phrases (15%).
+    - PHRASE RULES:
+      - USE: "JavaScript ES6+", "React", "Node.js", "TypeScript". 
+      - AVOID: "Proficiency in...", "Experienced with...", "Familiar with...".
+      - CONCEPTS: Use specific terms like "Component-based architecture", "State management", "RESTful APIs".
+      - ACTION PHRASES: "Designed and implemented", "Developed responsive UI", "Optimized application performance".
+    - PLACEMENT:
+      - Summary: 3-5 core keywords (Target Role + Top 3 Tech).
+      - Experience: 1-2 semantic phrases per bullet woven naturally.
+      - Skills: 15-25 specific technical terms categorized strictly.
+    - MANDATORY: Weave in the semantic expansion keywords into the content where ever possible.
 ═══════════════════════════════════════════════════════════════
+
 📐 REQUIRED JSON SCHEMA
 ═══════════════════════════════════════════════════════════════
 

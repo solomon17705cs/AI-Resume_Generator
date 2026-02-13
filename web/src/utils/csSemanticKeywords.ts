@@ -2,92 +2,57 @@
 export const CS_SEMANTIC_KEYWORDS = {
     roles: {
         frontend: [
-            'React',
-            'JavaScript',
-            'TypeScript',
-            'UI components',
-            'state management',
-            'performance optimization',
-            'web accessibility',
-            'responsive design',
-            'component-based architecture',
-            'frontend performance'
+            'JavaScript Developer', 'Frontend Engineer', 'React Developer', 'UI/UX Engineer',
+            'JavaScript ES6+', 'React', 'TypeScript', 'Redux', 'HTML5', 'CSS3',
+            'Component-based architecture', 'State management', 'Responsive Design',
+            'Cross-browser compatibility', 'Performance optimization',
+            'Designed and implemented', 'Developed responsive UI', 'Optimized application performance'
         ],
         backend: [
-            'REST APIs',
-            'microservices',
-            'database optimization',
-            'authentication',
-            'server-side logic',
-            'distributed systems',
-            'SQL',
-            'NoSQL',
-            'API integration',
-            'backend development',
-            'database design',
-            'scalable systems'
+            'Node.js Developer', 'Backend Engineer', 'API Developer', 'System Architect',
+            'JavaScript ES6+', 'Node.js', 'Express.js', 'PostgreSQL', 'MongoDB', 'Redis',
+            'Microservices architecture', 'RESTful APIs', 'Database optimization',
+            'Authentication and Authorization', 'Scalable systems',
+            'Architected backend services', 'Integrated API endpoints', 'Optimized query performance'
         ],
         fullstack: [
-            'full stack development',
-            'end-to-end applications',
-            'RESTful APIs',
-            'database design',
-            'frontend performance',
-            'system design',
-            'scalable systems',
-            'authentication and authorization'
+            'Full Stack Developer', 'Software Engineer', 'Full Stack Engineer',
+            'JavaScript ES6+', 'React', 'Node.js', 'SQL', 'NoSQL', 'TypeScript',
+            'End-to-end applications', 'Full stack development', 'System design',
+            'Scalable systems', 'Database design', 'API integration',
+            'Built full-stack solutions', 'Deployed scalable applications', 'Implemented secure architectures'
         ],
         ml: [
-            'machine learning',
-            'deep learning',
-            'model training',
-            'data preprocessing',
-            'neural networks',
-            'model evaluation',
-            'AI engineering',
-            'computer vision',
-            'natural language processing'
+            'ML Engineer', 'AI Developer', 'Data Scientist', 'Natural Language Processing Engineer',
+            'Python', 'PyTorch', 'TensorFlow', 'Scikit-learn', 'Pandas', 'NumPy',
+            'Neural networks', 'Model training', 'Data preprocessing',
+            'Model evaluation', 'Computer vision', 'NLP',
+            'Engineered ML models', 'Optimized model performance', 'Processed large-scale datasets'
         ],
         generic: [
-            'software engineering',
-            'data structures',
-            'algorithms',
-            'object-oriented programming',
-            'system design',
-            'problem-solving',
-            'code optimization',
-            'scalable systems',
-            'API design',
-            'database management',
-            'distributed systems',
-            'concurrency',
-            'multithreading'
+            'Software Engineer', 'Systems Programmer', 'Software Architect',
+            'Data structures', 'Algorithms', 'Object-oriented programming',
+            'System design', 'Code optimization', 'Problem-solving',
+            'Distributed systems', 'Concurrency', 'Multithreading',
+            'Engineered robust solutions', 'Implemented optimized algorithms', 'Collaborated on system design'
         ]
     },
     core: [
-        'data structures',
-        'algorithms',
-        'object-oriented programming',
-        'time and space complexity',
-        'problem solving',
-        'software engineering',
-        'system design',
-        'distributed systems',
-        'concurrency',
-        'multithreading'
+        'Data structures', 'Algorithms', 'System design', 'Software engineering',
+        'Object-oriented programming', 'Distributed systems', 'Concurrency', 'Multithreading'
     ],
-    verbs: [
-        'designed',
-        'implemented',
-        'optimized',
-        'developed',
-        'refactored',
-        'debugged',
-        'integrated',
-        'deployed'
+    actionPhrases: [
+        'Designed and implemented',
+        'Developed responsive UI',
+        'Optimized application performance',
+        'Collaborated with cross-functional teams',
+        'Integrated API endpoints',
+        'Architected scalable solutions',
+        'Spearheaded technical initiatives',
+        'Refactored legacy codebase'
     ],
     languages: [
-        'Java', 'Python', 'C++', 'JavaScript', 'TypeScript', 'Go', 'Rust', 'SQL'
+        'JavaScript ES6+', 'TypeScript', 'Python', 'Java', 'Go', 'Rust', 'C++', 'SQL'
     ]
 };
 

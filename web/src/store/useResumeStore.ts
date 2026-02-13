@@ -48,51 +48,59 @@ interface ResumeState {
 
 const DEFAULT_RESUME: ResumeData = {
     id: 'draft-1',
-    title: 'My Professional Resume',
+    title: 'ATSense Optimized Engine',
     lastModified: new Date().toISOString(),
     personalInfo: {
-        fullName: '',
-        email: '',
-        phone: '',
-        location: '',
-        linkedin: '',
-        github: '',
-        website: '',
+        fullName: 'Solomon K',
+        email: 'solomon@atsense.ai',
+        phone: '+1 555 000 0000',
+        location: 'San Francisco, CA',
+        linkedin: 'linkedin.com/in/solomon',
+        github: 'github.com/solomon',
+        website: 'https://atsense.ai',
     },
-    summary: '',
+    summary: 'High-performance Software Engineer specializing in AI-driven career engineering and ATS optimization. Expert in building predictive systems that treat resumes as structured architectural data to bypass legacy hiring bottlenecks.',
     experience: [
         {
             id: 'exp-1',
-            company: '',
-            role: '',
-            location: '',
-            startDate: '',
-            endDate: '',
-            isCurrent: false,
-            bullets: ['']
+            company: 'ATSense Intelligence',
+            role: 'Lead Engineering Architect',
+            location: 'Remote',
+            startDate: '2025-01',
+            endDate: 'Present',
+            isCurrent: true,
+            bullets: [
+                'Engineered a multi-signal ATS detection engine that improved candidate screening pass rates by 70% through GPT-4o powered semantic matching.',
+                'Designed and implemented a React-based real-time preview system with Puppeteer integration for 100% machine-readable PDF generation.',
+                'Developed a vector-similarity backend using Python FastAPI and Sentence-Transformers to calibrate resume content against complex Job Descriptions.'
+            ]
         }
     ],
     projects: [
         {
             id: 'proj-1',
-            name: '',
-            description: '',
-            technologies: [],
-            link: '',
-            bullets: ['']
+            name: 'Neural Resume Optimizer',
+            description: 'AI-first resume transformation engine leveraging semantic weaving and XYZ impact factoring.',
+            technologies: ['Next.js', 'Python', 'FastAPI', 'sentence-transformers'],
+            link: 'https://github.com/solomon/atsense',
+            bullets: [
+                'Automated the integration of job-specific keywords into existing history while maintaining 100% factual integrity and preventing AI hallucinations.',
+                'Implemented a weighted priority system (Role 35%, Tech 25%, Concept 20%) to optimize keyword density for modern Applicant Tracking Systems.'
+            ]
         }
     ],
     skills: [
-        { id: '1', name: 'Languages', skills: [] },
-        { id: '2', name: 'Frameworks', skills: [] }
+        { id: '1', name: 'Languages', skills: ['TypeScript', 'Python', 'JavaScript ES6+', 'SQL', 'Go'] },
+        { id: '2', name: 'Frameworks', skills: ['Next.js', 'React', 'FastAPI', 'Node.js', 'Tailwind CSS'] },
+        { id: '3', name: 'Intelligence', skills: ['LLM Orchestration', 'Vector Databases', 'NLP', 'Semantic Search'] }
     ],
     education: [
         {
             id: 'edu-1',
-            institution: '',
-            degree: '',
-            location: '',
-            graduationDate: ''
+            institution: 'Stanford University',
+            degree: 'M.S. in Computer Science (AI Concentration)',
+            location: 'Stanford, CA',
+            graduationDate: '2025'
         }
     ],
     metadata: {}

@@ -64,24 +64,17 @@ export default function ProfilePage() {
             <main className="flex-1 overflow-y-auto p-12 relative custom-scrollbar">
                 <div className="max-w-4xl mx-auto space-y-12">
                     {/* Header */}
-                    <div className="relative h-48 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-[40px] overflow-hidden shadow-2xl">
-                        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20" />
-                        <div className="absolute -bottom-12 left-12 flex items-end gap-6">
-                            <div className="w-32 h-32 bg-slate-900 border-4 border-slate-950 rounded-3xl flex items-center justify-center shadow-xl overflow-hidden">
-                                {githubAvatar ? (
-                                    <img src={githubAvatar} alt="Profile" className="w-full h-full object-cover" />
-                                ) : (
-                                    <User size={64} className="text-blue-500" />
-                                )}
-                            </div>
-                            <div className="mb-14 space-y-1">
-                                <h1 className="text-4xl font-black font-display tracking-tight text-white">{info.fullName || "Engineer Name"}</h1>
-                                <p className="text-blue-200 font-bold text-sm tracking-widest uppercase">{resume.experience[0]?.role || "Software Engineer"}</p>
+                    <div className="relative h-48 bg-slate-900 border border-white/5 rounded-[40px] shadow-2xl">
+                        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 rounded-[40px]" />
+                        <div className="absolute -bottom-8 inset-x-0 flex justify-center">
+                            <div className="flex flex-col items-center gap-2 text-center">
+                                <h1 className="text-5xl font-black font-display tracking-tight text-white">{info.fullName || "Engineer Name"}</h1>
+                                <p className="text-blue-400 font-bold text-sm tracking-[0.3em] uppercase">{resume.experience[0]?.role || "Software Engineer"}</p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-20">
                         {/* Left Column: Essential Data */}
                         <div className="md:col-span-1 space-y-8">
                             <section className="p-8 glass-dark border border-white/5 rounded-[32px] space-y-6">
@@ -90,7 +83,6 @@ export default function ProfilePage() {
                                     <ProfileMeta icon={<Mail size={16} />} label="Email" value={info.email} />
                                     <ProfileMeta icon={<Phone size={16} />} label="Phone" value={info.phone} />
                                     <ProfileMeta icon={<MapPin size={16} />} label="Location" value={info.location} />
-                                    <ProfileMeta icon={<Github size={16} />} label="GitHub" value={githubUsername || info.github} highlight />
                                     <ProfileMeta icon={<Linkedin size={16} />} label="LinkedIn" value={info.linkedin} />
                                     <ProfileMeta icon={<Globe size={16} />} label="Portfolio" value={info.website} />
                                 </div>
