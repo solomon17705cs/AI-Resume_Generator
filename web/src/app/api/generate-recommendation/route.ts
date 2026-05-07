@@ -1,80 +1,88 @@
+/**
+ * generate-recommendation/route.ts - AI Recommendation Letter via Requesty
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
+import { REQUESTY_CONFIG, getOpenRouterHeaders } from '@/config/requesty';
 
 export async function POST(req: NextRequest) {
     try {
         const { adminSummary, studentData, company, purpose } = await req.json();
-        const api_key = process.env.LLAMA_API_KEY || process.env.OPENROUTER_API_KEY;
+        const API_KEY = (process.env.OPENROUTER_API_KEY || '').trim();
 
-        console.log('🤖 Recommendation Generation Tool triggered for:', studentData?.fullName);
+        console.log('🤖 Recommendation Generation triggered for:', studentData?.fullName);
 
-        if (!api_key || api_key === 'your_key_here') {
+        if (!API_KEY || !API_KEY.startsWith('sk-or-v1-')) {
             return NextResponse.json({
-                error: 'Neural Core Offline',
-                message: 'AI API Key not configured. Please replace "your_key_here" in .env.local and restart the server.'
+                error: 'API not configured',
+                message: 'Add Requesty API key to .env.local'
             }, { status: 500 });
         }
 
         if (!studentData?.fullName) {
             return NextResponse.json({
-                error: 'Missing Context',
-                message: 'Student profile data is incomplete. Please update your profile first.'
+                error: 'Missing student data',
+                message: 'Student profile data is incomplete'
             }, { status: 400 });
         }
 
         const prompt = `
-            You are a Career Admin at ATSense. Write a professional and highly credible recommendation letter for a student.
-            
-            Student Name: ${studentData.fullName}
-            Target Company: ${company}
-            Purpose: ${purpose}
-            
-            Admin's Context:
-            "${adminSummary || 'The student is a high-performer with strong technical skills.'}"
-            
-            Student Resume Highlights:
-            ${JSON.stringify(studentData, null, 2)}
-            
-            Guidelines:
-            - Formal business tone.
-            - Mention verification by ATSense AI Intelligence.
-            - Highlight technical strengths.
-            - Under 250 words.
-            - IMPORTANT: Do NOT include a formal closing (e.g., "Sincerely," or "Regards,") as this will be added by the template automatically.
-            - Output ONLY the letter body text.
-        `;
+You are a Career Admin at ATSense. Write a professional recommendation letter for a student.
 
-        const response = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
-            model: 'meta-llama/llama-3.3-70b-instruct',
-            messages: [{ role: 'user', content: prompt }],
-            temperature: 0.7
-        }, {
-            headers: {
-                'Authorization': `Bearer ${api_key}`,
-                'Content-Type': 'application/json',
-                'HTTP-Referer': 'https://atsense.ai',
-                'X-Title': 'ATSense Recommendation Writer'
-            },
-            timeout: 30000 // 30s timeout
-        });
+Student Name: ${studentData.fullName}
+Target Company: ${company}
+Purpose: ${purpose}
 
-        if (!response.data?.choices?.[0]?.message?.content) {
-            throw new Error('Empty response from AI engine');
+Admin's Context:
+"${adminSummary || 'The student is a high-performer with strong technical skills.'}"
+
+Student Resume Highlights:
+${JSON.stringify(studentData, null, 2)}
+
+Guidelines:
+- Formal business tone
+- Under 250 words
+- Output ONLY the letter body (no closing)
+        `.trim();
+
+        const models = [...REQUESTY_CONFIG.models];
+        let response;
+        
+        for (const model of models) {
+            try {
+                response = await axios.post(
+                    `${REQUESTY_CONFIG.baseURL}/chat/completions`,
+                    {
+                        model: model,
+                        messages: [{ role: 'user', content: prompt }],
+                        temperature: 0.7
+                    },
+                    {
+                        headers: {
+                            ...getOpenRouterHeaders(API_KEY),
+                            'HTTP-Referer': 'https://atsense.ai',
+                            'X-Title': 'ATSense Recommendation Writer'
+                        },
+                        timeout: 30000
+                    }
+                );
+                break;
+            } catch {
+                continue;
+            }
         }
 
-        const letter = response.data.choices[0].message.content.trim();
+        if (!response) {
+            return NextResponse.json({ error: 'All models failed' }, { status: 503 });
+        }
 
         return NextResponse.json({
             success: true,
-            letter
+            letter: response.data.choices[0].message.content.trim()
         });
 
     } catch (error: any) {
-        const errorMessage = error.response?.data?.error?.message || error.message;
-        console.error('❌ Recommendation Generation Error:', errorMessage);
-        return NextResponse.json({
-            error: 'Generation Failed',
-            details: errorMessage
-        }, { status: 500 });
+        console.error('Recommendation Error:', error.message);
+        return NextResponse.json({ error: 'Generation failed' }, { status: 500 });
     }
 }

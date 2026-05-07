@@ -86,11 +86,10 @@ export const Preview: React.FC<PreviewProps> = ({ data, scale = 1, jobDescriptio
 
     return (
         <div
-            className="text-slate-900 origin-top-left bg-white rounded-lg shadow-xl"
+            className="text-slate-900 bg-white rounded-lg shadow-xl"
             style={{
                 width: '210mm',
                 minHeight: '297mm',
-                transform: `scale(${scale})`,
                 fontFamily: 'Inter, Helvetica, Arial, sans-serif'
             }}
             id="resume-content-to-export"

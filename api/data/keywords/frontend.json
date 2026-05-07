@@ -1,0 +1,7 @@
+{
+  "role": "Frontend Engineer",
+  "core": ["React", "TypeScript", "JavaScript", "HTML5", "CSS3", "Next.js"],
+  "tools": ["Redux", "Zustand", "Tailwind CSS", "Webpack", "Vite", "Jest"],
+  "concepts": ["Responsive Design", "Web Performance", "Component-Based Architecture", "State Management", "Accessibility (a11y)"],
+  "actions": ["Developed responsive UI", "Optimized lighthouse scores", "Built reusable components"]
+}

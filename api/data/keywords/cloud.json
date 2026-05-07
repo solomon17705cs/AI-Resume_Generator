@@ -1,0 +1,32 @@
+{
+    "role": "Cloud/DevOps Engineer",
+    "core": [
+        "AWS",
+        "Azure",
+        "GCP",
+        "Linux",
+        "Terraform",
+        "Docker"
+    ],
+    "tools": [
+        "Kubernetes",
+        "Jenkins",
+        "GitHub Actions",
+        "Ansible",
+        "Helm",
+        "Prometheus"
+    ],
+    "concepts": [
+        "Infrastructure as Code",
+        "Scalable Infrastructure",
+        "High Availability",
+        "Cloud Security",
+        "Monitoring",
+        "Automation"
+    ],
+    "actions": [
+        "Automated infrastructure deployment",
+        "Managed cloud migration",
+        "Implemented CI/CD pipelines"
+    ]
+}

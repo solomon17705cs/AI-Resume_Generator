@@ -28,7 +28,8 @@ export const SkillIntelligence: React.FC = () => {
         return processGithubLanguages(allLanguages);
     }, [githubRepos, githubLinked]);
 
-    if (!githubLinked || !skillCategories) {
+    // Wait state - show pending message
+    if (!githubLinked) {
         return (
             <div className="p-8 glass-dark border border-white/5 rounded-[40px] text-center space-y-4">
                 <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center mx-auto text-slate-600">
@@ -44,6 +45,23 @@ export const SkillIntelligence: React.FC = () => {
         );
     }
 
+    // Linked but no repos
+    if (githubLinked && githubRepos.length === 0) {
+        return (
+            <div className="p-8 glass-dark border border-white/5 rounded-[40px] text-center space-y-4">
+                <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center mx-auto text-slate-600">
+                    <Code2 size={24} />
+                </div>
+                <div className="space-y-1">
+                    <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Engineering Inventory</h3>
+                    <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
+                        No repositories found. Add GitHub repos to see skill analysis.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
     const getIconForCategory = (name: string) => {
         const n = name.toLowerCase();
         if (n.includes('frontend')) return <Globe size={14} />;
@@ -51,6 +69,14 @@ export const SkillIntelligence: React.FC = () => {
         if (n.includes('database')) return <Database size={14} />;
         if (n.includes('devops')) return <Layers size={14} />;
         return <Code2 size={14} />;
+    };
+
+// Safe number helper
+    const safePercent = (val: number | undefined | null): number => {
+        if (val === undefined || val === null) return 0;
+        const num = Number(val);
+        if (isNaN(num)) return 0;
+        return Math.min(100, Math.max(0, Math.round(num)));
     };
 
     return (
@@ -66,7 +92,7 @@ export const SkillIntelligence: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 gap-6">
-                {Object.values(skillCategories).map((category, idx) => (
+                {(skillCategories ? Object.values(skillCategories) : []).map((category, idx) => (
                     <motion.div
                         key={category.name}
                         initial={{ opacity: 0, y: 10 }}
@@ -80,7 +106,7 @@ export const SkillIntelligence: React.FC = () => {
                                 <h4 className="text-xs font-black uppercase tracking-widest">{category.name}</h4>
                             </div>
                             <span className="text-[10px] font-mono text-slate-500">
-                                {category.totalPercentage.toFixed(1)}% Impact
+                                {safePercent(category.totalPercentage)}% Impact
                             </span>
                         </div>
 
@@ -89,12 +115,12 @@ export const SkillIntelligence: React.FC = () => {
                                 <div key={sIdx} className="space-y-1.5">
                                     <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider text-slate-500 px-1">
                                         <span>{skill.name}</span>
-                                        <span className="text-slate-400">{skill.normalizedPercentage?.toFixed(0)}%</span>
+                                        <span className="text-slate-400">{safePercent(skill.normalizedPercentage)}%</span>
                                     </div>
                                     <div className="h-1 w-full bg-slate-800 rounded-full overflow-hidden">
                                         <motion.div
                                             initial={{ width: 0 }}
-                                            animate={{ width: `${skill.normalizedPercentage}%` }}
+                                            animate={{ width: `${safePercent(skill.normalizedPercentage)}%` }}
                                             className="h-full rounded-full"
                                             style={{ backgroundColor: skill.color || '#3b82f6' }}
                                         />

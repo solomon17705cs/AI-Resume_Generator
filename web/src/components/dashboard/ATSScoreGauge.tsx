@@ -5,9 +5,10 @@ import { motion } from "framer-motion";
 
 interface ATSScoreGaugeProps {
     score: number;
+    isFresher?: boolean;
 }
 
-export const ATSScoreGauge: React.FC<ATSScoreGaugeProps> = ({ score }) => {
+export const ATSScoreGauge: React.FC<ATSScoreGaugeProps> = ({ score, isFresher }) => {
     const clampedScore = Math.min(score, 100);
     const radius = 70;
     const circumference = 2 * Math.PI * radius;
@@ -21,6 +22,11 @@ export const ATSScoreGauge: React.FC<ATSScoreGaugeProps> = ({ score }) => {
 
     return (
         <div className="flex flex-col items-center">
+            {isFresher && (
+                <div className="absolute -top-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full">
+                    <span className="text-[8px] font-black text-amber-500 uppercase tracking-widest">Fresher Mode</span>
+                </div>
+            )}
             <div className="relative flex items-center justify-center">
                 <svg
                     className="w-48 h-48 -rotate-90 overflow-visible"

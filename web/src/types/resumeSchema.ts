@@ -37,8 +37,8 @@ export const ExperienceEntrySchema = z.object({
     title: z.string().min(3, "Job title required"),
     company: z.string().min(2, "Company name required"),
     location: z.string().optional(),
-    startDate: z.string().regex(/^\d{4}-\d{2}$/, "Format: YYYY-MM"),
-    endDate: z.string().regex(/^(\d{4}-\d{2}|Present)$/, "Format: YYYY-MM or 'Present'"),
+    startDate: z.string().regex(/^\d{4}-\d{2}$/, "Format: YYYY-MM").optional(),
+    endDate: z.string().regex(/^(\d{4}-\d{2}|Present)$/, "Format: YYYY-MM or 'Present'").optional(),
     bullets: z.array(ExperienceBulletSchema)
         .min(1, "At least 1 bullet required")
         .max(10, "Maximum 10 bullets per role")
@@ -80,7 +80,7 @@ export const SummarySchema = z.string()
 // Full AI-Generated Resume Schema
 export const AIGeneratedResumeSchema = z.object({
     summary: SummarySchema,
-    experience: z.array(ExperienceEntrySchema).min(1).max(5),
+    experience: z.array(ExperienceEntrySchema).min(0).max(5),
     projects: z.array(ProjectSchema).min(0).max(5),
     skills: z.array(SkillCategorySchema).min(1).max(6)
 });

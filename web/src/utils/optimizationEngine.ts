@@ -7,8 +7,8 @@ export const calculateKeywordPriority = (missing: string[], jobDescription: stri
     return missing.map(kw => {
         const count = (jdLower.match(new RegExp(`\\b${kw.toLowerCase()}\\b`, 'g')) || []).length;
         let priority: 'high' | 'medium' | 'low' = 'low';
-        if (count >= 12) priority = 'high';
-        else if (count >= 5) priority = 'medium';
+        if (count >= 3) priority = 'high';
+        else if (count >= 2) priority = 'medium';
         return { text: kw, priority, frequency: count };
     });
 };

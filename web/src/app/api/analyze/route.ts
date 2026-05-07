@@ -1,194 +1,264 @@
+/**
+ * analyze/route.ts - HYBRID: Python (KeyBERT + Semantic) + Requesty (AI)
+ * 
+ * Uses Python for: Keyword extraction + Semantic similarity
+ * Uses Requesty for: Strategic reasoning + Suggestions
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 import { detectATSWithConfidence } from '@/config/atsProfiles';
 import { analyzeKeywordDensity } from '@/utils/keywordAnalyzer';
-import { performControlledExpansion, getIndustryInjection } from '@/utils/jdIntelligence';
+import { REQUESTY_CONFIG, getOpenRouterHeaders } from '@/config/requesty';
 
+const API_KEY = (process.env.OPENROUTER_API_KEY || '').trim();  // This will be Requesty key
 const PYTHON_API_URL = process.env.PYTHON_API_URL || 'http://localhost:8001';
-const API_KEY = (process.env.OPENROUTER_API_KEY || process.env.LLAMA_API_KEY || '').trim();
+
+async function callRequesty(prompt: string, purpose: 'analysis' | 'optimization' | 'extraction' = 'analysis') {
+    const models = REQUESTY_CONFIG.modelPriorities[purpose] || REQUESTY_CONFIG.models;
+    let lastError;
+    
+    for (const model of models) {
+        try {
+            const response = await axios.post(
+                `${REQUESTY_CONFIG.baseURL}/chat/completions`,
+                {
+                    model: model,
+                    messages: [{ role: 'user', content: prompt }],
+                    response_format: { type: 'json_object' },
+                    temperature: 0.3
+                },
+                {
+                    headers: getOpenRouterHeaders(API_KEY),
+                    timeout: 30000
+                }
+            );
+            return response.data;
+        } catch (err: any) {
+            console.warn(`Requesty model ${model} failed:`, err.message);
+            lastError = err;
+            continue;
+        }
+    }
+    throw lastError || new Error('All Requesty models failed');
+}
+
+function buildDefaultIntelligence(industry: string) {
+    return {
+        role: "Software Engineer",
+        domain: "Full Stack Engineer",
+        stack: { 
+            languages: [], frameworks: [], databases: [], cloud: [], 
+            tools: [], concepts: [], soft_skills: [], action_verbs: [],
+            qualifications: [], domain_keywords: []
+        },
+        seniority: "Mid",
+        industry: industry || "Tech"
+    };
+}
 
 export async function POST(req: NextRequest) {
     try {
-        const { resume_text, job_description, jd_url, company_name, company_size, region, industry } = await req.json();
-
-        // 1. Enhanced ATS Detection with Multi-Signal Inference
-        const atsDetection = detectATSWithConfidence({
-            url: jd_url,
-            companyName: company_name,
-            companySize: company_size,
-            region: region,
-            industry: industry
-        });
-
-        const atsProfile = atsDetection.profile;
-
-        // 2. Statistical Analysis from Python Engine
-        const pyResponse = await axios.post(`${PYTHON_API_URL}/analyze`, {
+        const {
             resume_text,
             job_description,
-            ats_profile: atsProfile
+            jd_url,
+            company_name,
+            company_size,
+            region,
+            industry,
+        } = await req.json();
+
+        // Step 1: ATS Detection
+        const atsDetection = detectATSWithConfidence({
+            url: jd_url, companyName: company_name,
+            companySize: company_size, region: region, industry: industry,
         });
+        const atsProfile = atsDetection.profile;
 
-        // 3. New Robust Keyword Density Analysis
+        // Step 2: Python NLP (KeyBERT + Semantic)
+        let pyResponse;
+        let usePython = false;
+        
+        try {
+            pyResponse = await axios.post(`${PYTHON_API_URL}/analyze`, {
+                resume_text,
+                job_description,
+                ats_profile: atsProfile,
+            }, { timeout: 15000 });
+            usePython = true;
+        } catch (pyErr: unknown) {
+            const err = pyErr as Error;
+            console.warn('Python unavailable:', err?.message || pyErr);
+        }
 
-        // 4. Structured JD Intelligence Layer (Role-First Architecture)
-        let jdIntelligence = {
-            role: "Software Engineer",
-            domain: "Full Stack Engineer",
-            stack: { languages: [], frameworks: [], databases: [], cloud: [], tools: [], concepts: [] },
-            seniority: "Mid",
-            industry: industry || "Tech"
-        };
-
-        if (API_KEY && API_KEY !== 'your_key_here') {
+        // Step 3: Get JD intelligence from Requesty
+        let jdIntelligence = buildDefaultIntelligence(industry);
+        
+        if (API_KEY && API_KEY.startsWith('sk-or-v1-')) {
             try {
-                const extractionPrompt = `
-                    Extract the primary technical elements from this job description.
-                    Ignore general phrases, soft skills, and marketing fluff.
-
-                    [TARGET DOMAINS]: Frontend Engineer, Backend Engineer, Full Stack Engineer, DevOps Engineer, ML Engineer, Data Engineer.
-
-                    JOB DESCRIPTION:
-                    "${job_description.substring(0, 2000)}"
-
-                    OUTPUT JSON SCHEMA:
-                    {
-                      "role": "Specific Job Title",
-                      "domain": "One of the [TARGET DOMAINS]",
-                      "languages": [],
-                      "frameworks": [],
-                      "databases": [],
-                      "cloud_platform": [],
-                      "tools": [],
-                      "concepts": ["Strictly technical like 'Microservices', 'REST APIs'"],
-                      "seniority": "Junior/Mid/Senior/Lead"
-                    }
-                `;
-
-                const extractionRes = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
-                    model: 'meta-llama/llama-3.3-70b-instruct',
-                    messages: [{ role: 'user', content: extractionPrompt }],
-                    response_format: { type: 'json_object' }
-                }, {
-                    headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' }
-                });
-
-                const rawIntel = JSON.parse(extractionRes.data.choices[0].message.content);
+                const intelRes = await callRequesty(`
+Extract keywords from this job:
+Job: "${job_description.substring(0, 2000)}"
+Return: {"role":"","domain":"seniority","languages":[],"frameworks":[],"databases":[],"cloud_platform":[],"tools":[],"concepts":[]}
+                `, 'extraction');
+                
+                const raw = JSON.parse(intelRes.choices[0].message.content);
                 jdIntelligence = {
-                    role: rawIntel.role || "Software Engineer",
-                    domain: rawIntel.domain || "Full Stack Engineer",
+                    role: raw.role || 'Software Engineer',
+                    domain: raw.domain || 'Full Stack',
                     stack: {
-                        languages: rawIntel.languages || [],
-                        frameworks: rawIntel.frameworks || [],
-                        databases: rawIntel.databases || [],
-                        cloud: rawIntel.cloud_platform || [],
-                        tools: rawIntel.tools || [],
-                        concepts: rawIntel.concepts || []
+                        languages: raw.languages || [],
+                        frameworks: raw.frameworks || [],
+                        databases: raw.databases || [],
+                        cloud: raw.cloud_platform || [],
+                        tools: raw.tools || [],
+                        concepts: raw.concepts || [],
+                        soft_skills: raw.soft_skills || [],
+                        action_verbs: raw.action_verbs || [],
+                        qualifications: raw.qualifications || [],
+                        domain_keywords: raw.domain_keywords || []
                     },
-                    seniority: rawIntel.seniority || "Mid",
-                    industry: industry || "Tech"
+                    seniority: raw.seniority || 'Mid',
+                    industry: industry || 'Tech'
                 };
-            } catch (err) {
-                console.error("Structured Extraction failed:", err);
+            } catch (llmErr: unknown) {
+                const err = llmErr as Error;
+                console.warn('Requesty extraction failed:', err?.message || llmErr);
             }
         }
 
-        // 5. Controlled Semantic Expansion
-        const allStackElements = [
+        // Build keyword list
+        const allKeywords = [
             ...jdIntelligence.stack.languages,
             ...jdIntelligence.stack.frameworks,
             ...jdIntelligence.stack.databases,
             ...jdIntelligence.stack.cloud,
             ...jdIntelligence.stack.tools,
-            ...jdIntelligence.stack.concepts
+            ...jdIntelligence.stack.concepts,
         ];
+        const uniqueKeywords = [...new Set(allKeywords)];
 
-        const expandedKeywords = performControlledExpansion(allStackElements, jdIntelligence.domain);
-        const industryKeywords = getIndustryInjection(jdIntelligence.industry);
+        // Step 4: Keyword Analysis (TypeScript)
+        const kwAnalysis = analyzeKeywordDensity(resume_text, job_description, uniqueKeywords);
 
-        // 5. Final Accurate Keyword Density Analysis (Using Expanded Intelligence)
-        const kwAnalysis = analyzeKeywordDensity(resume_text, job_description, expandedKeywords);
-
-        // 6. Strategic Intelligence from Llama (Contextual Reasoning)
-        let aiReasoning = pyResponse.data.reasoning;
+        // Step 5: AI Reasoning via Requesty
+        let aiReasoning = pyResponse?.data?.reasoning || "Analysis complete.";
         let aiSuggestions = kwAnalysis.recommendations;
 
-        if (API_KEY && API_KEY !== 'your_key_here') {
+        if (API_KEY && API_KEY.startsWith('sk-or-v1-')) {
             try {
-                const aiPrompt = `
-                    You are an expert Recruitment Strategist specializing in ${jdIntelligence.domain}.
-                    
-                    TASK: Analyze resume alignment for a ${jdIntelligence.seniority} level ${jdIntelligence.role} in the ${jdIntelligence.industry} industry.
-                    
-                    [STRUCTURED TECH STACK]
-                    - Languages: ${jdIntelligence.stack.languages.join(', ')}
-                    - Frameworks: ${jdIntelligence.stack.frameworks.join(', ')}
-                    - Cloud/Platform: ${jdIntelligence.stack.cloud.join(', ')}
-                    - Concepts/Architecture: ${jdIntelligence.stack.concepts.join(', ')}
-                    
-                    [SEMANTIC EXPANSION]
-                    ${expandedKeywords.join(', ')}
-                    
-                    [INDUSTRY CONTEXT]
-                    ${industryKeywords.join(', ')}
+                const aiRes = await callRequesty(`
+Analyze resume-job alignment:
+Resume: "${resume_text.substring(0, 1000)}"
+Job: "${job_description.substring(0, 1000)}"
+Found: ${kwAnalysis.found.join(', ')}
+Missing: ${kwAnalysis.missing.join(', ')}
+Return: {"reasoning":"","suggestions":[{"title":"","description":""}]}
+                `, 'analysis');
 
-                    [STRICT RULES]
-                    1. NO HALLUCINATION: Only suggest words linked to the structured stack or expansion.
-                    2. SENIORITY ALIGNMENT: Suggest ${jdIntelligence.seniority === 'Senior' || jdIntelligence.seniority === 'Lead' ? '"Architected" or "Led"' : '"Developed" or "Implemented"'} style bullets.
-                    3. INDUSTRY AWARENESS: Inject ${jdIntelligence.industry}-specific relevance.
-
-                    ATS System: ${atsProfile.name}
-                    
-                    JOB DESCRIPTION:
-            "${job_description.substring(0, 2000)}"
-                    
-                    RESUME TEXT:
-            "${resume_text.substring(0, 2000)}"
-                    
-                    OUTPUT REQUIREMENTS(JSON):
-            1. "reasoning": Provide a strategic insight based on these keywords.
-                    2. "additionalSuggestions": Provide 4 high - impact ATS - specific suggestions.
-                    
-                    Return ONLY a valid JSON object.
-                `;
-
-                const aiRes = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
-                    model: 'meta-llama/llama-3.3-70b-instruct',
-                    messages: [{ role: 'user', content: aiPrompt }],
-                    response_format: { type: 'json_object' }
-                }, {
-                    headers: {
-                        'Authorization': `Bearer ${API_KEY} `,
-                        'Content-Type': 'application/json',
-                        'HTTP-Referer': 'https://atsense.ai',
-                        'X-Title': 'ATSense Strategic Analysis'
-                    }
-                });
-
-                const intelligence = JSON.parse(aiRes.data.choices[0].message.content);
-                aiReasoning = intelligence.reasoning;
-                if (intelligence.additionalSuggestions) {
-                    aiSuggestions = [...aiSuggestions, ...intelligence.additionalSuggestions];
+                const intel = JSON.parse(aiRes.choices[0].message.content);
+                if (intel.reasoning) aiReasoning = intel.reasoning;
+                if (intel.suggestions) {
+                    aiSuggestions = [...aiSuggestions, ...intel.suggestions];
                 }
-            } catch (aiErr) {
-                console.error("AI Strategic layer failed:", aiErr);
+            } catch (aiErr: unknown) {
+                const err = aiErr as Error;
+                console.warn('AI reasoning failed:', err?.message || aiErr);
             }
         }
 
+        // Calculate scores - FIXED: More accurate scoring for empty/minimal resumes
+        const foundCount = kwAnalysis.found.length;
+        const totalCount = kwAnalysis.metrics.length;
+        
+        // Keyword score: Base on actual matching, not just presence
+        let keywordScore = 0;
+        if (totalCount > 0) {
+            keywordScore = (foundCount / totalCount) * 100;
+        } else if (kwAnalysis.found.length > 0) {
+            keywordScore = 50; // Has keywords but no JD to compare
+        } else {
+            keywordScore = 10; // No keywords found at all
+        }
+        
+        // Section compliance: Check for actual structured content, not just keywords
+        const resumeLower = resume_text.toLowerCase();
+        
+        const yearExp = /\d[\s]*years?[\s]*(of[\s]+)?(experience|exp)/i;
+        const roleMatch = /(software|fullstack|backend|frontend|developer|engineer)/i;
+        const hasExperience = yearExp.test(resumeLower) || roleMatch.test(resumeLower);
+        
+        const hasEducation = /(university|college|bachelor|master|degree|phd|bs|ms)/i.test(resumeLower);
+        const hasSkills = /(skills|technologies|proficient|involved|using|built|developed)/i.test(resumeLower);
+        const hasSummary = /(summary|objective|profile|professional)/i.test(resumeLower);
+        
+        // Only count as present if there's actual content, not just the keyword
+        const sectionChecks = [
+            hasExperience && resume_text.length > 50,  // Need actual content beyond just mentioning "experience"
+            hasEducation && resume_text.length > 30,
+            hasSkills && resume_text.length > 30,
+            hasSummary && resume_text.length > 20
+        ];
+        const foundSections = sectionChecks.filter(Boolean).length;
+        const sectionScore = (foundSections / sectionChecks.length) * 100;
+        
+        // Only give high section score if there's real content
+        const actualContentLength = resume_text.replace(/[^a-zA-Z0-9]/g, '').length;
+        const finalSectionScore = actualContentLength < 100 ? Math.min(sectionScore, 25) : sectionScore;
+        
+        // Semantic score: Require actual content to have语义 relevance
+        let semanticScore = pyResponse?.data?.match_forensics?.semantic_relevance || 30;
+        if (actualContentLength < 100) {
+            semanticScore = Math.min(semanticScore, 20);
+        }
+        
+        // Fixed overall score calculation
+        let overallScore;
+        if (actualContentLength < 50) {
+            overallScore = 15; // Near empty resume
+        } else if (actualContentLength < 200) {
+            overallScore = 25; // Minimal resume
+        } else {
+            overallScore = Math.min(95, Math.max(25, 
+                (keywordScore * atsProfile.weights.keywords * 0.4) +
+                (finalSectionScore * atsProfile.weights.structure * 0.3) +
+                (semanticScore * atsProfile.weights.semantic * 0.3)
+            ));
+        }
+
         return NextResponse.json({
-            ...pyResponse.data,
+            score: Math.round(overallScore),
+            found_keywords: kwAnalysis.found,
+            missing_keywords: kwAnalysis.missing,
             reasoning: aiReasoning,
             suggestions: aiSuggestions,
-            jd_intelligence: jdIntelligence, // Pass back to frontend
+            match_forensics: {
+                semantic_overlap: Math.min(100, Math.max(0, Math.round(semanticScore * 0.8))),
+                keyword_density: Math.min(100, Math.max(0, Math.round(keywordScore))),
+                structural_integrity: Math.min(100, Math.max(0, Math.round(finalSectionScore))),
+                keyword_match: Math.round(keywordScore),
+                section_compliance: Math.round(finalSectionScore),
+                semantic_relevance: Math.round(semanticScore),
+                clarity_recency: pyResponse?.data?.match_forensics?.clarity_recency || (actualContentLength > 100 ? 70 : 30)
+            },
+            section_scores: {
+                experience: Math.round(finalSectionScore),
+                skills: Math.round(keywordScore),
+                impact: actualContentLength > 50 ? Math.round(overallScore * 0.6) : 10
+            },
+            keyword_metrics: kwAnalysis.metrics.slice(0, 20).map((m: any) => ({
+                text: m.text, found: m.found, priority: m.priority,
+                count_in_jd: m.count_in_jd, count_in_resume: m.count_in_resume,
+                context: m.context, recommended_bullet: m.recommended_bullet
+            })),
             ats_type: atsProfile.name,
             ats_profile: {
-                id: atsProfile.id,
-                name: atsProfile.name,
-                description: atsProfile.description,
-                rules: atsProfile.rules,
+                id: atsProfile.id, name: atsProfile.name,
+                description: atsProfile.description, rules: atsProfile.rules,
                 targetScore: atsProfile.targetScore,
-                commonCompanies: atsProfile.commonCompanies.slice(0, 8),
-                companyTraits: atsProfile.companyTraits,
+                commonCompanies: atsProfile.commonCompanies?.slice(0, 8) || [],
+                companyTraits: atsProfile.companyTraits || [],
                 optimizationStrategy: atsProfile.optimizationStrategy
             },
             ats_detection: {
@@ -196,16 +266,11 @@ export async function POST(req: NextRequest) {
                 method: atsDetection.detectionMethod,
                 reasoning: atsDetection.reasoning
             },
-            keyword_metrics: pyResponse.data.keyword_metrics,
-            match_forensics: {
-                ...pyResponse.data.match_forensics,
-                keyword_density: kwAnalysis.density
-            }
+            analysis_source: usePython ? 'hybrid' : 'requesty_only'
         });
 
     } catch (error: any) {
-        console.error('Analysis Engine Error:', error.message);
-        return NextResponse.json({ error: 'Deep Analysis Engine offline' }, { status: 503 });
+        console.error('Analysis Error:', error.message);
+        return NextResponse.json({ error: 'Analysis failed', details: error.message }, { status: 503 });
     }
 }
-

@@ -2,6 +2,25 @@ import { ResumeData } from '../types/resume';
 
 export type ExperienceLevel = 'FRESHER' | 'EXPERIENCED' | 'TRANSITIONING';
 
+export const calculateExperienceYears = (resume: ResumeData): number => {
+    if (!resume.experience || resume.experience.length === 0) return 0;
+
+    let totalMonths = 0;
+    resume.experience.forEach(exp => {
+        if (!exp.startDate) return;
+
+        const start = new Date(exp.startDate);
+        const end = exp.endDate === 'Present' || !exp.endDate ? new Date() : new Date(exp.endDate);
+
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) return;
+
+        const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+        totalMonths += Math.max(0, months);
+    });
+
+    return Math.round((totalMonths / 12) * 10) / 10;
+};
+
 export const determineExperienceLevel = (resume: ResumeData): ExperienceLevel => {
     // 1. Check if user has real professional experience
     // Filter out dummy or empty experience entries
@@ -26,11 +45,13 @@ export const determineExperienceLevel = (resume: ResumeData): ExperienceLevel =>
     const hasProjects = (resume.projects?.length || 0) > 0;
 
     // Level Detection Logic
-    if (!hasExperience && (isStudentOrRecentGrad || hasProjects)) {
+    const totalYears = calculateExperienceYears(resume);
+
+    if (totalYears < 1.0 && (isStudentOrRecentGrad || hasProjects)) {
         return 'FRESHER';
-    } else if (hasExperience && realExperience.length >= 3) {
+    } else if (totalYears >= 3.0) {
         return 'EXPERIENCED';
-    } else if (hasExperience && isStudentOrRecentGrad) {
+    } else if (hasExperience && (isStudentOrRecentGrad || totalYears < 2.0)) {
         // Someone with 1-2 internships/jobs but still in school or just out
         return 'FRESHER';
     }

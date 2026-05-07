@@ -5,8 +5,9 @@ import { validateAIResume, ATSType } from '@/types/resumeSchema';
 import { determineExperienceLevel } from '@/utils/userProfileAnalyzer';
 import { performControlledExpansion } from '@/utils/jdIntelligence';
 import { ResumeData } from '@/types/resume';
+import { REQUESTY_CONFIG, getOpenRouterHeaders } from '@/config/requesty';
 
-const API_KEY = (process.env.LLAMA_API_KEY || process.env.OPENROUTER_API_KEY || '').trim();
+const API_KEY = (process.env.OPENROUTER_API_KEY || '').trim();
 
 /**
  * Schema-First Resume Generation Endpoint
@@ -34,8 +35,8 @@ export async function POST(req: NextRequest) {
 
         if (!API_KEY || API_KEY === 'your_key_here' || API_KEY === '') {
             return NextResponse.json({
-                error: 'AI service not configured',
-                details: 'Please set OPENROUTER_API_KEY or LLAMA_API_KEY in your environment.'
+                error: 'API service not configured',
+                details: 'Please set OPENROUTER_API_KEY (Requesty key) in your environment.'
             }, { status: 500 });
         }
 
@@ -73,18 +74,33 @@ export async function POST(req: NextRequest) {
                     }
                 `;
 
-                const extractionRes = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
-                    model: 'meta-llama/llama-3.3-70b-instruct',
-                    messages: [{ role: 'user', content: extractionPrompt }],
-                    response_format: { type: 'json_object' }
-                }, {
-                    headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' }
-                });
+                // Try Requesty extraction with fallback
+                const extractModels = [...REQUESTY_CONFIG.models];
+                let extractionRes = null;
+                
+                for (const model of extractModels) {
+                    try {
+                        extractionRes = await axios.post(
+                            `${REQUESTY_CONFIG.baseURL}/chat/completions`,
+                            {
+                                model: model,
+                                messages: [{ role: 'user', content: extractionPrompt }],
+                                response_format: { type: 'json_object' }
+                            },
+                            {
+                                headers: getOpenRouterHeaders(API_KEY)
+                            }
+                        );
+                        break;
+                    } catch {
+                        continue;
+                    }
+                }
 
-                const rawIntel = JSON.parse(extractionRes.data.choices[0].message.content);
+                const rawIntel = extractionRes ? JSON.parse(extractionRes.data.choices[0].message.content) : {};
                 jdIntelligence = {
-                    role: rawIntel.role || target_role || "Software Engineer",
-                    domain: rawIntel.domain || "Full Stack Engineer",
+                    role: rawIntel?.role || target_role || "Software Engineer",
+                    domain: rawIntel?.domain || "Full Stack Engineer",
                     stack: {
                         languages: rawIntel.languages || [],
                         frameworks: rawIntel.frameworks || [],
@@ -141,35 +157,51 @@ export async function POST(req: NextRequest) {
 
         console.log('🎯 Generating schema-based resume for ATS:', ats_type);
 
-        // Call LLaMA 3.3-70B with JSON mode and timeout
-        const aiResponse = await axios.post(
-            'https://openrouter.ai/api/v1/chat/completions',
-            {
-                model: 'meta-llama/llama-3.3-70b-instruct',
-                messages: [
+        // Call Requesty with fallback models
+        const models = [...REQUESTY_CONFIG.models];
+        let aiResponse;
+        let lastError;
+        
+        for (const model of models) {
+            try {
+                aiResponse = await axios.post(
+                    `${REQUESTY_CONFIG.baseURL}/chat/completions`,
                     {
-                        role: 'system',
-                        content: 'You are an ATS optimization engine that generates strictly valid JSON resume data.'
+                        model: model,
+                        messages: [
+                            {
+                                role: 'system',
+                                content: 'You are an ATS optimization engine that generates strictly valid JSON resume data.'
+                            },
+                            {
+                                role: 'user',
+                                content: prompt
+                            }
+                        ],
+                        response_format: { type: 'json_object' },
+                        temperature: 0.3,
+                        max_tokens: 3500
                     },
                     {
-                        role: 'user',
-                        content: prompt
+                        headers: {
+                            ...getOpenRouterHeaders(API_KEY),
+                            'HTTP-Referer': 'https://atsense.ai',
+                            'X-Title': 'ATSense Schema-First Resume Generator'
+                        },
+                        timeout: 60000
                     }
-                ],
-                response_format: { type: 'json_object' },
-                temperature: 0.3,
-                max_tokens: 3500 // Increased slightly
-            },
-            {
-                headers: {
-                    'Authorization': `Bearer ${API_KEY}`,
-                    'Content-Type': 'application/json',
-                    'HTTP-Referer': 'https://atsense.ai',
-                    'X-Title': 'ATSense Schema-First Resume Generator'
-                },
-                timeout: 60000 // 60s timeout for complex generations
+                );
+                break;
+            } catch (err: any) {
+                console.warn(`Requesty model ${model} failed:`, err.message);
+                lastError = err;
+                continue;
             }
-        );
+        }
+        
+        if (!aiResponse) {
+            throw lastError || new Error('All Requesty models failed');
+        }
 
         if (!aiResponse.data || !aiResponse.data.choices || !aiResponse.data.choices[0]) {
             throw new Error('Invalid response structure from OpenRouter');

@@ -29,6 +29,8 @@ import {
     Github,
     Layers,
     ChevronDown,
+    ChevronRight,
+    ArrowRight,
     Trash2
 } from "lucide-react";
 import axios from "axios";
@@ -47,7 +49,8 @@ export default function EditorPage() {
         updateExperience, addExperience, removeExperience, removeProject, removeEducation, updateResume,
         githubLinked, jobDescription, jobUrl, setJobContext,
         syncLanguagesFromGitHub, syncProjectsFromGitHub, addSkillCategory, updateSkillCategoryName,
-        removeSkillCategory, githubRepos, setGitHubRepos
+        removeSkillCategory, githubRepos, setGitHubRepos,
+        isFresher, consumeAICredit, canUseAI, getRemainingCredits
     } = useResumeStore();
 
     const [activeTab, setActiveTab] = useState("personal");
@@ -61,6 +64,29 @@ export default function EditorPage() {
     const [isHydrated, setIsHydrated] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isSyncingGitHub, setIsSyncingGitHub] = useState(false);
+    const [isParsing, setIsParsing] = useState(false);
+    
+    // Calculate center offset for initial centering
+    const getCenterOffset = () => {
+        // Center the 210mm page in typical container  
+        const containerWidth = previewWidth || 600;
+        const pageWidth = 210 * 3.78; // 210mm to px (at 96dpi)
+        const offsetX = (containerWidth - pageWidth) / 2;
+        return { x: offsetX, y: 40 }; // Slight vertical offset
+    };
+
+    // Initialize with center offset
+    const initialCenter = getCenterOffset();
+    const [panPosition, setPanPosition] = useState(initialCenter);
+    const [isPanning, setIsPanning] = useState(false);
+    const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+
+    // Check if at center
+    const isAtCenter = Math.abs(panPosition.x - initialCenter.x) < 10 && Math.abs(panPosition.y - initialCenter.y) < 10;
+
+    const handleResetPosition = () => {
+        setPanPosition(initialCenter);
+    };
 
     // Save Status Logic
     useEffect(() => {
@@ -107,10 +133,47 @@ export default function EditorPage() {
         };
     }, [isResizing]);
 
+    // Panning/Dragging Logic for Preview
+    useEffect(() => {
+        const handlePanMove = (e: MouseEvent) => {
+            if (!isPanning) return;
+            const dx = e.clientX - panStart.x;
+            const dy = e.clientY - panStart.y;
+            setPanPosition(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+            setPanStart({ x: e.clientX, y: e.clientY });
+        };
+
+        const handlePanEnd = () => {
+            setIsPanning(false);
+            document.body.style.cursor = 'default';
+        };
+
+        if (isPanning) {
+            window.addEventListener('mousemove', handlePanMove);
+            window.addEventListener('mouseup', handlePanEnd);
+            document.body.style.cursor = 'grabbing';
+        }
+
+        return () => {
+            window.removeEventListener('mousemove', handlePanMove);
+            window.removeEventListener('mouseup', handlePanEnd);
+        };
+    }, [isPanning, panStart]);
+
     if (!isHydrated) return null;
 
     const handleAnalyze = async () => {
         if (!jobDescription) return;
+        
+        // Check AI credits
+        if (!canUseAI()) {
+            alert(`Daily AI credits exhausted! You have ${getRemainingCredits()}/3 credits remaining. Come back tomorrow or upgrade.`);
+            return;
+        }
+        
+        // Consume credit before action
+        const creditConsumed = consumeAICredit();
+        
         setIsAnalyzing(true);
         try {
             // Create a plain text version for NLP
@@ -152,6 +215,15 @@ export default function EditorPage() {
             alert("Please paste a Job Description first.");
             return;
         }
+        
+        // Check AI credits
+        if (!canUseAI()) {
+            alert(`Daily AI credits exhausted! You have ${getRemainingCredits()}/3 credits remaining. Come back tomorrow or upgrade.`);
+            return;
+        }
+        
+        // Consume credit before action
+        consumeAICredit();
 
         const beforeScore = analysis?.overallScore || 0;
         setIsOptimizing(true);
@@ -282,6 +354,59 @@ export default function EditorPage() {
         }
     };
 
+    const handleImportResume = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsParsing(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const res = await axios.post('/api/parse', formData);
+
+            if (res.data) {
+                // Ensure IDs are unique for the new sections
+                const structured = res.data;
+
+                const processedResume = {
+                    ...resume,
+                    personalInfo: {
+                        ...resume.personalInfo,
+                        ...(structured.personalInfo || {})
+                    },
+                    summary: structured.summary || resume.summary,
+                    experience: (structured.experience || []).map((exp: any) => ({
+                        ...exp,
+                        id: Math.random().toString(36).substr(2, 9),
+                        bullets: Array.isArray(exp.bullets) ? exp.bullets : ['']
+                    })),
+                    projects: (structured.projects || []).map((proj: any) => ({
+                        ...proj,
+                        id: Math.random().toString(36).substr(2, 9),
+                        bullets: Array.isArray(proj.bullets) ? proj.bullets : ['']
+                    })),
+                    skills: (structured.skills || []).map((cat: any) => ({
+                        ...cat,
+                        id: Math.random().toString(36).substr(2, 9),
+                        skills: Array.isArray(cat.skills) ? cat.skills : []
+                    })),
+                    education: (structured.education || []).map((edu: any) => ({
+                        ...edu,
+                        id: Math.random().toString(36).substr(2, 9)
+                    }))
+                };
+
+                updateResume(processedResume);
+                alert("✅ Resume imported and structured! Please review the fields.");
+            }
+        } catch (err: any) {
+            console.error(err);
+            alert("Failed to parse resume: " + (err.response?.data?.error || err.message));
+        } finally {
+            setIsParsing(false);
+        }
+    };
+
     return (
         <div className="flex flex-col h-screen bg-slate-950 font-sans text-slate-100 overflow-hidden">
             {/* SaaS Header */}
@@ -312,6 +437,12 @@ export default function EditorPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
+                    {/* AI Credits Display */}
+                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest ${getRemainingCredits() > 0 ? 'text-emerald-400 bg-emerald-500/10' : 'text-red-400 bg-red-500/10'}`}>
+                        <Zap size={12} />
+                        <span>{getRemainingCredits()}/3 Credits</span>
+                    </div>
+                    
                     <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-500 ${isSaving ? 'text-blue-400 bg-blue-500/5' : 'text-slate-500 opacity-60'}`}>
                         {isSaving ? (
                             <>
@@ -355,7 +486,7 @@ export default function EditorPage() {
                                 <ShieldCheck className="text-blue-500" size={16} />
                             </div>
                             <div className="bg-blue-500/5 rounded-3xl border border-blue-500/10 p-2 relative overflow-hidden">
-                                <ATSScoreGauge score={analysis?.overallScore || 0} />
+                                <ATSScoreGauge score={analysis?.overallScore || 0} isFresher={isFresher} />
                                 {(isAnalyzing || isOptimizing) && (
                                     <div className="absolute inset-0 flex items-center justify-center bg-slate-950/20 backdrop-blur-[1px] animate-pulse">
                                         <div className="text-[7px] font-black text-white uppercase tracking-[0.3em] bg-blue-600 px-2 py-1 rounded shadow-lg">Recalculating</div>
@@ -474,18 +605,47 @@ export default function EditorPage() {
                                     let newSummary = resume.summary;
                                     let newExperience = [...resume.experience];
                                     let newProjects = [...resume.projects];
+                                    let applied = false;
 
+                                    // Try to replace in summary first
                                     if (resume.summary.includes(ex.before)) {
                                         newSummary = resume.summary.replace(ex.before, ex.after);
-                                    } else {
+                                        applied = true;
+                                    }
+                                    
+                                    // Try to replace in experience bullets
+                                    if (!applied) {
                                         newExperience = resume.experience.map(exp => ({
                                             ...exp,
-                                            bullets: exp.bullets.map(b => b.includes(ex.before) ? b.replace(ex.before, ex.after) : b)
+                                            bullets: exp.bullets.map(b => {
+                                                if (b.includes(ex.before)) {
+                                                    applied = true;
+                                                    return b.replace(ex.before, ex.after);
+                                                }
+                                                return b;
+                                            })
                                         }));
+                                    }
+                                    
+                                    // Try to replace in project bullets
+                                    if (!applied) {
                                         newProjects = resume.projects.map(proj => ({
                                             ...proj,
-                                            bullets: proj.bullets.map(b => b.includes(ex.before) ? b.replace(ex.before, ex.after) : b)
+                                            bullets: proj.bullets.map(b => {
+                                                if (b.includes(ex.before)) {
+                                                    applied = true;
+                                                    return b.replace(ex.before, ex.after);
+                                                }
+                                                return b;
+                                            })
                                         }));
+                                    }
+                                    
+                                    // If not found anywhere, add to summary or first experience bullet
+                                    if (!applied) {
+                                        if (ex.after) {
+                                            newSummary = newSummary ? newSummary + ' ' + ex.after : ex.after;
+                                        }
                                     }
                                     updateResume({ summary: newSummary, experience: newExperience, projects: newProjects });
 
@@ -546,6 +706,41 @@ export default function EditorPage() {
                         <div className="max-w-2xl mx-auto space-y-12 pb-40">
                             {activeTab === "personal" && (
                                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
+                                    {/* Resume Import Section */}
+                                    <div className="glass-dark border border-blue-500/20 rounded-[32px] p-8 space-y-6 bg-gradient-to-br from-blue-900/10 to-cyan-900/10 mb-8">
+                                        <div className="flex items-start gap-4">
+                                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-500/20">
+                                                <Download className="w-6 h-6 text-white rotate-180" />
+                                            </div>
+                                            <div className="flex-1 space-y-1">
+                                                <h4 className="text-lg font-bold text-white">Import Existing Resume</h4>
+                                                <p className="text-sm text-slate-400 leading-relaxed">
+                                                    Upload your PDF, DOCX, or TXT resume. We'll extract and structure your data automatically.
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="relative">
+                                            <input
+                                                type="file"
+                                                accept=".pdf,.docx,.doc,.txt"
+                                                onChange={handleImportResume}
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                                disabled={isParsing}
+                                            />
+                                            <div className={`w-full py-4 border-2 border-dashed border-blue-500/20 rounded-2xl flex items-center justify-center gap-3 bg-blue-500/5 hover:bg-blue-500/10 transition-all ${isParsing ? 'animate-pulse' : ''}`}>
+                                                {isParsing ? (
+                                                    <div className="flex items-center gap-3 text-blue-400">
+                                                        <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                                                        <span className="text-xs font-black uppercase tracking-widest">Parsing Architecture...</span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs font-black text-blue-400 uppercase tracking-widest">Click to upload or drag & drop</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <SectionHeader title="Identify & Contact" />
                                     <div className="grid grid-cols-2 gap-6">
                                         <InputField label="Full Name" value={resume.personalInfo.fullName} onChange={(v: string) => updatePersonalInfo({ fullName: v })} placeholder="e.g. John Doe" />
@@ -748,6 +943,7 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                                             </div>
                                         </div>
                                     </div>
+                                    <NextButton onClick={() => setActiveTab("summary")} label="Next: Professional Summary" />
                                 </div>
                             )}
 
@@ -803,6 +999,7 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                                             </div>
                                         ))}
                                     </div>
+                                    <NextButton onClick={() => setActiveTab("projects")} label="Next: Technical Projects" />
                                 </div>
                             )}
 
@@ -878,6 +1075,7 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                                             </div>
                                         ))}
                                     </div>
+                                    <NextButton onClick={() => setActiveTab("skills")} label="Next: Skill Inventory" />
                                 </div>
                             )}
 
@@ -919,6 +1117,7 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                                         className="w-full h-64 bg-slate-900 border border-white/5 rounded-[32px] p-8 text-sm text-slate-300 focus:outline-none focus:border-blue-500 transition-all font-medium leading-relaxed"
                                         placeholder="[Write a brief high-impact summary here, focusing on your core expertise and major achievements. Or use the AI Writer to generate one based on the JD...]"
                                     />
+                                    <NextButton onClick={() => setActiveTab("experience")} label="Next: Professional Experience" />
                                 </div>
                             )}
 
@@ -969,6 +1168,7 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                                             ))}
                                         </div>
                                     </div>
+                                    <NextButton onClick={() => setActiveTab("education")} label="Next: Academic Foundation" />
                                 </div>
                             )}
 
@@ -1008,6 +1208,7 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                                     >
                                         + Add academic record
                                     </button>
+                                    <NextButton onClick={() => setActiveTab("history")} label="Next: Version History" />
                                 </div>
                             )}
 
@@ -1029,7 +1230,7 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                     <div className="h-8 w-1 bg-slate-600 rounded-full group-hover:bg-white transition-colors" />
                 </div>
 
-                {/* Live HD Preview Sidebar */}
+{/* Live HD Preview Sidebar */}
                 <aside
                     className="shrink-0 bg-[#020617] border-l border-white/5 flex flex-col relative transition-all duration-75"
                     style={{ width: `${previewWidth}px` }}
@@ -1040,6 +1241,13 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                             <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_#10b981]" />
                         </div>
                         <div className="flex items-center gap-4">
+                            <button
+                                onClick={() => setPanPosition({ x: 0, y: 0 })}
+                                className="p-2 text-blue-400 hover:bg-white/10 rounded-lg transition-all"
+                                title="Reset Position"
+                            >
+                                <Target size={16} />
+                            </button>
                             <div className="flex items-center gap-2 bg-white/5 rounded-xl px-2">
                                 <button onClick={() => setPreviewScale(Math.max(0.3, previewScale - 0.1))} className="w-8 h-8 text-slate-500 hover:text-white flex items-center justify-center">-</button>
                                 <span className="text-[10px] font-mono text-slate-500 w-8 text-center">{Math.round(previewScale * 100)}%</span>
@@ -1054,15 +1262,20 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                             </button>
                         </div>
                     </div>
-                    <div className="flex-1 overflow-auto p-12 bg-[#020617] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] flex justify-center custom-scrollbar">
+                    <div className="flex-1 overflow-auto p-8 bg-[#020617] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] flex items-start justify-center custom-scrollbar">
                         <div
-                            className="drop-shadow-[0_40px_80px_rgba(0,0,0,0.9)] mb-40 rounded-lg border border-white/5 transition-all duration-200 overflow-visible"
+                            className={`drop-shadow-[0_40px_80px_rgba(0,0,0,0.9)] mb-20 mt-4 rounded-lg border border-white/5 transition-all duration-200 ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
                             style={{
                                 width: '210mm',
                                 minWidth: '210mm',
                                 minHeight: '297mm',
-                                transform: `scale(${previewScale})`,
+                                transform: `scale(${previewScale}) translate(${panPosition.x}px, ${panPosition.y}px)`,
                                 transformOrigin: 'top center'
+                            }}
+                            onMouseDown={(e) => {
+                                e.preventDefault();
+                                setPanStart({ x: e.clientX, y: e.clientY });
+                                setIsPanning(true);
                             }}
                         >
                             <Preview
@@ -1073,72 +1286,120 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                                 onUpdate={updateResume}
                             />
                         </div>
+
+                        {/* Factual Integrity Status */}
+                        <div className="px-6 py-6 border-b border-white/5 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2 text-emerald-500">
+                                    <ShieldCheck size={14} />
+                                    <h3 className="text-[9px] font-black uppercase tracking-[0.2em]">Factual Integrity</h3>
+                                </div>
+                                <div className="px-2 py-0.5 bg-emerald-500/10 rounded-full border border-emerald-500/20">
+                                    <span className="text-[7px] font-black text-emerald-500 uppercase">Secure</span>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <p className="text-[9px] text-slate-500 leading-relaxed italic">
+                                    "Our system prevents AI hallucinations by creating a strict Evidence Buffer from your projects and history."
+                                </p>
+                                <div className="flex flex-wrap gap-1.5 pt-1">
+                                    {isParsing ? (
+                                        <div className="w-full h-8 flex items-center justify-center bg-white/5 rounded-lg animate-pulse">
+                                            <span className="text-[7px] text-slate-500 uppercase tracking-widest font-black">Updating Buffer...</span>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {resume.experience.length > 0 && (
+                                                <div className="px-2 py-1 bg-white/5 rounded-lg border border-white/5 flex items-center gap-1.5">
+                                                    <div className="w-1 h-1 rounded-full bg-emerald-500" />
+                                                    <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">{resume.experience.length} History signals</span>
+                                                </div>
+                                            )}
+                                            {resume.projects.length > 0 && (
+                                                <div className="px-2 py-1 bg-white/5 rounded-lg border border-white/5 flex items-center gap-1.5">
+                                                    <div className="w-1 h-1 rounded-full bg-emerald-500" />
+                                                    <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">{resume.projects.length} Project signals</span>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </aside>
             </div>
 
-            {/* Full-Screen Overlay Modal */}
-            <AnimatePresence>
-                {isFullScreen && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex items-center justify-center"
-                        onClick={() => setIsFullScreen(false)}
-                    >
-                        {/* Control Bar */}
-                        <div className="absolute top-0 left-0 right-0 h-16 bg-slate-950/80 border-b border-white/5 flex items-center justify-between px-8 z-10">
-                            <div className="flex items-center gap-3">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Immersive Preview</span>
-                                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_#10b981]" />
-                            </div>
-                            <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-2 bg-white/5 rounded-xl px-2">
-                                    <button onClick={(e) => { e.stopPropagation(); setPreviewScale(Math.max(0.3, previewScale - 0.1)); }} className="w-8 h-8 text-slate-500 hover:text-white flex items-center justify-center">-</button>
-                                    <span className="text-[10px] font-mono text-slate-400 w-8 text-center">{Math.round(previewScale * 100)}%</span>
-                                    <button onClick={(e) => { e.stopPropagation(); setPreviewScale(Math.min(1.5, previewScale + 0.1)); }} className="w-8 h-8 text-slate-500 hover:text-white flex items-center justify-center">+</button>
-                                </div>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); setIsFullScreen(false); }}
-                                    className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all flex items-center gap-2"
-                                >
-                                    <X size={18} />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">Exit</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Preview Content */}
-                        <div
-                            className="overflow-auto max-h-[calc(100vh-80px)] mt-16 p-12 custom-scrollbar"
-                            onClick={(e) => e.stopPropagation()}
+{/* Full-Screen Overlay Modal */}
+                <AnimatePresence>
+                    {isFullScreen && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex flex-col"
                         >
-                            <motion.div
-                                initial={{ scale: 0.95, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                exit={{ scale: 0.95, opacity: 0 }}
-                                transition={{ duration: 0.2 }}
-                                className="drop-shadow-[0_40px_120px_rgba(0,0,0,0.9)] rounded-lg border border-white/10"
-                                style={{
-                                    width: '210mm',
-                                    minHeight: '297mm',
-                                    transform: `scale(${previewScale})`,
-                                    transformOrigin: 'center center'
-                                }}
-                            >
-                                <Preview
-                                    data={resume}
-                                    scale={1}
-                                    jobDescription={jobDescription}
-                                    isInteractive={true}
-                                    onUpdate={updateResume}
-                                />
-                            </motion.div>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                            {/* Control Bar */}
+                            <div className="h-16 bg-slate-950/80 border-b border-white/5 flex items-center justify-between px-8 shrink-0">
+                                <div className="flex items-center gap-3">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Immersive Preview</span>
+                                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_#10b981]" />
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <button
+                                        onClick={() => setPanPosition({ x: 0, y: 0 })}
+                                        className="p-2 text-blue-400 hover:bg-white/10 rounded-lg transition-all"
+                                        title="Reset Position"
+                                    >
+                                        <Target size={16} />
+                                    </button>
+                                    <div className="flex items-center gap-2 bg-white/5 rounded-xl px-2">
+                                        <button onClick={(e) => { e.stopPropagation(); setPreviewScale(Math.max(0.3, previewScale - 0.1)); }} className="w-8 h-8 text-slate-500 hover:text-white flex items-center justify-center">-</button>
+                                        <span className="text-[10px] font-mono text-slate-400 w-8 text-center">{Math.round(previewScale * 100)}%</span>
+                                        <button onClick={(e) => { e.stopPropagation(); setPreviewScale(Math.min(1.5, previewScale + 0.1)); }} className="w-8 h-8 text-slate-500 hover:text-white flex items-center justify-center">+</button>
+                                    </div>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setIsFullScreen(false); }}
+                                        className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all flex items-center gap-2"
+                                    >
+                                        <X size={18} />
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Exit</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Preview Content - Centered with Zoom & Pan */}
+                            <div className="flex-1 overflow-auto p-12 flex items-start justify-center custom-scrollbar pt-8">
+                                <motion.div
+                                    initial={{ scale: 0.95, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    exit={{ scale: 0.95, opacity: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    className={`drop-shadow-[0_40px_120px_rgba(0,0,0,0.9)] rounded-lg border border-white/10 ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
+                                    style={{
+                                        width: '210mm',
+                                        minHeight: '297mm',
+                                        transform: `scale(${previewScale}) translate(${panPosition.x}px, ${panPosition.y}px)`,
+                                        transformOrigin: 'top center'
+                                    }}
+                                    onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        setPanStart({ x: e.clientX, y: e.clientY });
+                                        setIsPanning(true);
+                                    }}
+                                >
+                                    <Preview
+                                        data={resume}
+                                        scale={1}
+                                        jobDescription={jobDescription}
+                                        isInteractive={true}
+                                        onUpdate={updateResume}
+                                    />
+                                </motion.div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
             <style dangerouslySetInnerHTML={{
                 __html: `
@@ -1186,5 +1447,18 @@ const InputField = ({ label, value, onChange, placeholder }: any) => (
             />
             <div className="absolute inset-0 rounded-2xl pointer-events-none border border-transparent group-focus-within/input:border-blue-500/20 group-focus-within/input:shadow-[0_0_20px_rgba(37,99,235,0.05)]" />
         </div>
+    </div>
+);
+
+const NextButton = ({ onClick, label }: { onClick: () => void, label: string }) => (
+    <div className="mt-20 flex justify-end items-center gap-4 pt-12 border-t border-white/5">
+        <button
+            onClick={onClick}
+            className="flex items-center gap-4 px-10 py-5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-[24px] font-black text-xs uppercase tracking-[0.2em] hover:scale-105 transition-all shadow-2xl shadow-blue-500/20 group relative overflow-hidden"
+        >
+            <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+            <span className="relative z-10">{label}</span>
+            <ArrowRight className="relative z-10 group-hover:translate-x-2 transition-transform" size={18} />
+        </button>
     </div>
 );

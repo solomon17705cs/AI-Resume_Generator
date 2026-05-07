@@ -1,16 +1,45 @@
+/**
+ * optimize-full/route.ts - Resume Optimization via Requesty
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 import { detectATS } from '@/config/atsProfiles';
 import { analyzeKeywordDensity } from '@/utils/keywordAnalyzer';
-import {
-    SECTION_TEMPLATES,
-    detectIndustry,
-    calculateKeywordPriority
-} from '@/utils/optimizationEngine';
+import { SECTION_TEMPLATES, detectIndustry, calculateKeywordPriority } from '@/utils/optimizationEngine';
 import { getSemanticKeywordsForRole, detectRoleCategory } from '@/utils/csSemanticKeywords';
 import { determineExperienceLevel, getFresherRules } from '@/utils/userProfileAnalyzer';
+import { REQUESTY_CONFIG, getOpenRouterHeaders } from '@/config/requesty';
 
-const API_KEY = (process.env.OPENROUTER_API_KEY || process.env.LLAMA_API_KEY || '').trim();
+const API_KEY = (process.env.OPENROUTER_API_KEY || '').trim();
+
+async function callRequesty(prompt: string) {
+    const models = [...REQUESTY_CONFIG.models];
+    let lastError;
+    
+    for (const model of models) {
+        try {
+            const response = await axios.post(
+                `${REQUESTY_CONFIG.baseURL}/chat/completions`,
+                {
+                    model: model,
+                    messages: [{ role: 'user', content: prompt }],
+                    response_format: { type: 'json_object' },
+                    temperature: 0.0
+                },
+                {
+                    headers: getOpenRouterHeaders(API_KEY),
+                    timeout: 45000
+                }
+            );
+            return response.data;
+        } catch (err: any) {
+            console.warn(`Requesty ${model} failed:`, err.message);
+            lastError = err;
+            continue;
+        }
+    }
+    throw lastError || new Error('All models failed');
+}
 
 export async function POST(req: NextRequest) {
     try {
@@ -20,108 +49,72 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Missing resume or job description' }, { status: 400 });
         }
 
-        if (!API_KEY || API_KEY === 'your_key_here') {
-            return NextResponse.json({
-                error: 'Neural Core Offline',
-                message: 'AI API Key not configured.'
+        if (!API_KEY || !API_KEY.startsWith('sk-or-v1-')) {
+            return NextResponse.json({ 
+                error: 'Requesty API Key not configured',
+                message: 'Add your Requesty API key to .env.local'
             }, { status: 500 });
         }
 
         const atsProfile = detectATS(jobUrl || jobDescription);
         const kwAnalysis = analyzeKeywordDensity(JSON.stringify(resume), jobDescription);
 
-        // Flatten user skills for filtering
-        const userSkills = resume.skills?.flatMap((cat: any) => cat.skills) || [];
+        // Evidence Buffer
+        const verifiedSkills = new Set<string>();
+        resume.skills?.forEach((cat: any) => cat.skills?.forEach((s: string) => verifiedSkills.add(s)));
+        resume.experience?.forEach((exp: any) => {
+            exp.bullets?.forEach((b: string) => {
+                const matches = b.match(/\b[A-Z][A-Za-z0-9+#.]*\b/g);
+                matches?.forEach((m: string) => verifiedSkills.add(m));
+            });
+        });
+        resume.projects?.forEach((proj: any) => {
+            proj.technologies?.forEach((t: string) => verifiedSkills.add(t));
+            proj.bullets?.forEach((b: string) => {
+                const matches = b.match(/\b[A-Z][A-Za-z0-9+#.]*\b/g);
+                matches?.forEach((m: string) => verifiedSkills.add(m));
+            });
+        });
+        const evidenceBuffer = Array.from(verifiedSkills).join(', ');
 
         const industry = detectIndustry(jobDescription);
         const roleCategory = detectRoleCategory(jobDescription);
-        const semanticKeywords = getSemanticKeywordsForRole(roleCategory, userSkills);
         const expLevel = determineExperienceLevel(resume);
-        const fresherRules = getFresherRules();
-
         const targetSections = SECTION_TEMPLATES[industry] || SECTION_TEMPLATES.generic;
-        const prioritizedKeywords = calculateKeywordPriority(kwAnalysis.missingCritical, jobDescription);
-
-        const topHighPriority = prioritizedKeywords
-            .filter(k => k.priority === 'high')
-            .map(k => k.text)
-            .concat(semanticKeywords.slice(0, 5)) // Inject top semantic keywords
-            .join(', ');
 
         const prompt = `
-            You are an elite ATS Optimization Engine (Transformation Mode).
-            Targeting a score improvement from ~20 to 90+.
+You are an ATS Optimization Engine.
+Target: Improve ATS score from ~20 to 90+.
 
-            [STRICT NO-HALLUCINATION POLICY]
-            1. DO NOT ADD ANY NEW COMPANIES, JOBS, OR PROJECTS.
-            2. DO NOT ADD ANY NEW EXPERIENCE ENTRIES.
-            3. The number of entries in the "experience" and "projects" arrays MUST remain EXACTLY the same as the input.
-            4. DO NOT invent professional work experience or job titles.
-            5. ONLY optimize the 'bullets', 'summary', and 'skills' of the provided resume.
+[STRICT RULES]
+1. DO NOT add new companies or jobs
+2. DO NOT invent experience
+3. Only optimize bullets, summary, skills
+4. Use ONLY skills from Evidence Buffer
 
-            [DYNAMIC KEYWORD-ADAPTATION PIPELINE]
-            1. JD KEYWORD EXTRACTION:
-               - From the Job Description, extract hard skills and concepts.
-            
-            2. SEMANTIC INJECTION (MANDATORY):
-               - Integrate these specific semantic keywords: ${topHighPriority}.
-               - Apply ATS Weighting: Role (35%), Core Tech (25%), Concepts (20%), Action Phrases (15%).
-               - Use "ES6+" style notation (e.g., JavaScript ES6+).
-               - AVOID filler words: "Proficiency in", "Experienced with", "Helpful for".
-               - Focus on "weaving" these into existing bullet points naturally.
+[EVIDENCE BUFFER]
+${evidenceBuffer || 'No verified skills found'}
 
-            3. STRATEGIC INJECTION (ATS-SAFE):
-               - SUMMARY: Place the Role Title and 3-4 top matched keywords. Max 60 words.
-               - EXPERIENCE: Inject JD-specific keywords into EXISTING bullets using the action-verb style.
-               - PROJECTS: Expand EXISTING project bullets using technical keywords from the JD.
+[OPTIMIZATION]
+- Inject keywords from JD into existing bullets
+- Rewrite summary with role + keywords
+- Add metrics where possible
+- Keep same number of entries
 
-            4. FINAL VALIDATION:
-               - Section headers must be standard: ${targetSections.join(', ')}.
-               - CANDIDATE LEVEL: ${expLevel}.
-               ${expLevel === 'FRESHER' ? `
-               - FRESHER RULES:
-                 1. Focus on academic achievements and potential.
-                 2. Rename experience to "Academic & Professional Experience" if needed, but do not invent work history.
-               ` : ''}
+[OUTPUT]
+Return JSON resume with optimized content.
+        `.trim();
 
-            [INPUT DATA]
-            Job: "${jobDescription.substring(0, 2500)}"
-            Resume: ${JSON.stringify(resume)}
+        const response = await callRequesty(prompt);
 
-            [OUTPUT]
-            Return ONLY a valid JSON of the updated ResumeData object.
-            Ensure the structure matches exactly.
-        `;
-
-        const response = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
-            model: 'meta-llama/llama-3.3-70b-instruct',
-            messages: [{ role: 'user', content: prompt }],
-            response_format: { type: 'json_object' },
-            temperature: 0.0 // Set to 0.0 for maximum consistency and deterministic output
-        }, {
-            headers: {
-                'Authorization': `Bearer ${API_KEY}`,
-                'Content-Type': 'application/json',
-                'HTTP-Referer': 'https://atsense.ai',
-                'X-Title': 'ATSense Strategic Optimization'
-            },
-            timeout: 60000
-        });
-
-        let optimizedContent = response.data.choices[0].message.content;
-
-        // Remove potential markdown code blocks
+        let optimizedContent = response.choices[0].message.content;
         optimizedContent = optimizedContent.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
 
         let optimizedResume;
         try {
             optimizedResume = JSON.parse(optimizedContent);
-        } catch (parseError) {
-            console.error('Failed to parse LLM response as JSON:', optimizedContent);
-            return NextResponse.json({
-                error: 'Optimization output format error',
-                message: 'The AI returned an invalid response format.'
-            }, { status: 502 });
+        } catch {
+            return NextResponse.json({ error: 'Invalid AI response' }, { status: 502 });
         }
 
         return NextResponse.json({
@@ -133,12 +126,10 @@ export async function POST(req: NextRequest) {
         });
 
     } catch (error: any) {
-        const errorMsg = error.response?.data?.error?.message || error.message;
-        console.error('Neural Optimization Error:', errorMsg);
-        return NextResponse.json({
-            error: 'Deep Optimization Engine offline',
-            details: errorMsg
+        console.error('Optimization Error:', error.message);
+        return NextResponse.json({ 
+            error: 'Optimization failed',
+            details: error.message 
         }, { status: 503 });
     }
 }
-

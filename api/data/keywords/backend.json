@@ -1,0 +1,33 @@
+{
+    "role": "Backend Engineer",
+    "core": [
+        "Node.js",
+        "Python",
+        "Go",
+        "Java",
+        "SQL",
+        "NoSQL"
+    ],
+    "tools": [
+        "Express",
+        "FastAPI",
+        "PostgreSQL",
+        "MongoDB",
+        "Redis",
+        "Docker",
+        "Kubernetes"
+    ],
+    "concepts": [
+        "RESTful APIs",
+        "Microservices",
+        "Scalability",
+        "Database Optimization",
+        "System Design",
+        "CI/CD"
+    ],
+    "actions": [
+        "Architected scalable backends",
+        "Designed RESTful APIs",
+        "Optimized database queries"
+    ]
+}

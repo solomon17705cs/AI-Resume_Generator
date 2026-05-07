@@ -18,14 +18,17 @@ import {
     ShieldCheck,
     Cpu,
     Brain,
-    Wand2,
+    Github,
+    LinkedinIcon,
+    Eye,
     Sparkles,
+    Loader2,
+    Wand2,
     ArrowRight,
     BarChart4,
     Compass,
     Type,
     Layout,
-    Github
 } from "lucide-react";
 import Link from "next/link";
 import { useResumeStore } from "@/store/useResumeStore";
@@ -47,19 +50,7 @@ const NEURAL_STEPS = [
     { name: "ATS Validation", icon: <ShieldCheck size={20} />, description: "Final integrity check against the target platform rules." }
 ];
 
-const LinkedinIcon = ({ size }: { size: number }) => (
-    <svg
-        width={size} height={size}
-        viewBox="0 0 24 24" fill="none"
-        stroke="currentColor" strokeWidth="2"
-        strokeLinecap="round" strokeLinejoin="round"
-        className="text-[#0077b5]"
-    >
-        <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
-        <rect x="2" y="9" width="4" height="12" />
-        <circle cx="4" cy="4" r="2" />
-    </svg>
-);
+import { Preview } from '@/components/editor/Preview';
 
 export default function AnalysisPage() {
     const router = useRouter();
@@ -265,6 +256,25 @@ export default function AnalysisPage() {
                         </div>
                     ) : (
                         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                            {/* Resume Preview */}
+                            <div className="animate-in fade-in slide-in-from-bottom-4">
+                                <details className="group">
+                                    <summary className="flex items-center gap-3 cursor-pointer list-none p-6 bg-gradient-to-r from-blue-600/20 to-indigo-600/20 border border-white/5 rounded-[32px] hover:border-blue-500/30 transition-all">
+                                        <Eye className="text-blue-400" size={20} />
+                                        <span className="text-lg font-bold">Resume Preview</span>
+                                        <span className="text-sm text-slate-500">(Click to expand)</span>
+                                    </summary>
+                                    <div className="mt-4 p-6 bg-slate-950/50 border border-white/5 rounded-[32px]">
+                                        <Preview 
+                                            data={resume} 
+                                            scale={0.6} 
+                                            jobDescription={jobDescription}
+                                            isInteractive={false}
+                                        />
+                                    </div>
+                                </details>
+                            </div>
+
                             <MagicFixPanel
                                 currentScore={currentAnalysis.overallScore}
                                 isFixing={isFixing}

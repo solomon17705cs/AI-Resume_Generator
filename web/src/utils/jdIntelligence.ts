@@ -10,6 +10,10 @@ export interface JDIntelligence {
         cloud: string[];
         tools: string[];
         concepts: string[];
+        soft_skills?: string[];
+        action_verbs?: string[];
+        qualifications?: string[];
+        domain_keywords?: string[];
     };
     seniority: 'Junior' | 'Mid' | 'Senior' | 'Lead' | 'Principal';
     industry: string;

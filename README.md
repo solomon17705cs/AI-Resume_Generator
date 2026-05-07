@@ -57,7 +57,9 @@ Automatically detects which ATS a company is using (Workday, Greenhouse, Lever, 
 ```bash
 cd api
 python3 -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+source venv/bin/activate  
+Windows: venv\Scripts\activate
+
 pip install -r requirements.txt  # If requirements.txt exists, or manual install:
 pip install fastapi uvicorn keybert sentence-transformers spacy pydantic "urllib3<2"
 python3 -m spacy download en_core_web_sm

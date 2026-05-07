@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { ResumeData, ATSAnalysis, RecommendationRequest, Experience, Project } from '@/types/resume';
+import { determineExperienceLevel } from '@/utils/userProfileAnalyzer';
+import { processGithubLanguages } from '@/utils/skillProcessor';
+
+const MAX_AI_CREDITS = 3;
 
 interface ResumeState {
     resume: ResumeData;
@@ -10,7 +14,12 @@ interface ResumeState {
     jobUrl: string;
     recommendationRequests: RecommendationRequest[];
     userRole: 'user' | 'admin' | null;
-
+    isFresher: boolean;
+    
+    // AI Credits System
+    aiCreditsUsed: number;
+    aiCreditsResetDate: string;
+    
     // Actions
     setUserRole: (role: 'user' | 'admin' | null) => void;
     updateResume: (updates: Partial<ResumeData>) => void;
@@ -18,6 +27,12 @@ interface ResumeState {
     setJobContext: (description: string, url: string) => void;
     saveToHistory: () => void;
     restoreFromHistory: (id: string) => void;
+    
+    // AI Credits Management
+    consumeAICredit: () => boolean;
+    canUseAI: () => boolean;
+    resetAICredits: () => void;
+    getRemainingCredits: () => number;
 
     // Specific nested updates
     updatePersonalInfo: (info: Partial<ResumeData['personalInfo']>) => void;
@@ -60,55 +75,16 @@ const DEFAULT_RESUME: ResumeData = {
         website: 'https://atsense.ai',
     },
     summary: 'High-performance Software Engineer specializing in AI-driven career engineering and ATS optimization. Expert in building predictive systems that treat resumes as structured architectural data to bypass legacy hiring bottlenecks.',
-    experience: [
-        {
-            id: 'exp-1',
-            company: 'ATSense Intelligence',
-            role: 'Lead Engineering Architect',
-            location: 'Remote',
-            startDate: '2025-01',
-            endDate: 'Present',
-            isCurrent: true,
-            bullets: [
-                'Engineered a multi-signal ATS detection engine that improved candidate screening pass rates by 70% through GPT-4o powered semantic matching.',
-                'Designed and implemented a React-based real-time preview system with Puppeteer integration for 100% machine-readable PDF generation.',
-                'Developed a vector-similarity backend using Python FastAPI and Sentence-Transformers to calibrate resume content against complex Job Descriptions.'
-            ]
-        }
-    ],
-    projects: [
-        {
-            id: 'proj-1',
-            name: 'Neural Resume Optimizer',
-            description: 'AI-first resume transformation engine leveraging semantic weaving and XYZ impact factoring.',
-            technologies: ['Next.js', 'Python', 'FastAPI', 'sentence-transformers'],
-            link: 'https://github.com/solomon/atsense',
-            bullets: [
-                'Automated the integration of job-specific keywords into existing history while maintaining 100% factual integrity and preventing AI hallucinations.',
-                'Implemented a weighted priority system (Role 35%, Tech 25%, Concept 20%) to optimize keyword density for modern Applicant Tracking Systems.'
-            ]
-        }
-    ],
-    skills: [
-        { id: '1', name: 'Languages', skills: ['TypeScript', 'Python', 'JavaScript ES6+', 'SQL', 'Go'] },
-        { id: '2', name: 'Frameworks', skills: ['Next.js', 'React', 'FastAPI', 'Node.js', 'Tailwind CSS'] },
-        { id: '3', name: 'Intelligence', skills: ['LLM Orchestration', 'Vector Databases', 'NLP', 'Semantic Search'] }
-    ],
-    education: [
-        {
-            id: 'edu-1',
-            institution: 'Stanford University',
-            degree: 'M.S. in Computer Science (AI Concentration)',
-            location: 'Stanford, CA',
-            graduationDate: '2025'
-        }
-    ],
+    experience: [],
+    projects: [],
+    skills: [],
+    education: [],
     metadata: {}
 };
 
 export const useResumeStore = create<ResumeState>()(
     persist(
-        (set) => ({
+        (set, get) => ({
             resume: DEFAULT_RESUME,
             analysis: null,
             history: [],
@@ -120,14 +96,20 @@ export const useResumeStore = create<ResumeState>()(
             jobUrl: '',
             recommendationRequests: [],
             userRole: null,
+            isFresher: false,
+            
+            // AI Credits - reset daily
+            aiCreditsUsed: 0,
+            aiCreditsResetDate: new Date().toDateString(),
 
             setUserRole: (role) => set({ userRole: role }),
 
             updateResume: (updates: Partial<ResumeData>) => set((state) => {
                 const newResume = { ...state.resume, ...updates, lastModified: new Date().toISOString() };
-                return { resume: newResume };
+                const level = determineExperienceLevel(newResume);
+                return { resume: newResume, isFresher: level === 'FRESHER' };
             }),
-            resetResume: () => set(() => ({ resume: DEFAULT_RESUME })),
+            resetResume: () => set({ resume: DEFAULT_RESUME, aiCreditsUsed: 0 }),
 
             setAnalysis: (analysis: ATSAnalysis) => set({ analysis }),
 
@@ -144,6 +126,48 @@ export const useResumeStore = create<ResumeState>()(
                 const historical = state.history.find(r => r.id === id);
                 return historical ? { resume: historical } : state;
             }),
+            
+            // AI Credits Functions
+            consumeAICredit: () => {
+                const state = get();
+                const today = new Date().toDateString();
+                
+                // Reset if it's a new day
+                if (state.aiCreditsResetDate !== today) {
+                    set({ aiCreditsUsed: 0, aiCreditsResetDate: today });
+                }
+                
+                if (state.aiCreditsUsed >= MAX_AI_CREDITS) {
+                    return false; // No credits left
+                }
+                
+                set({ aiCreditsUsed: state.aiCreditsUsed + 1 });
+                return true;
+            },
+            
+            canUseAI: () => {
+                const state = get();
+                const today = new Date().toDateString();
+                
+                if (state.aiCreditsResetDate !== today) {
+                    return true; // New day, credits reset
+                }
+                
+                return state.aiCreditsUsed < MAX_AI_CREDITS;
+            },
+            
+            resetAICredits: () => set({ aiCreditsUsed: 0 }),
+            
+            getRemainingCredits: () => {
+                const state = get();
+                const today = new Date().toDateString();
+                
+                if (state.aiCreditsResetDate !== today) {
+                    return MAX_AI_CREDITS; // New day
+                }
+                
+                return MAX_AI_CREDITS - state.aiCreditsUsed;
+            },
 
             updatePersonalInfo: (info: Partial<ResumeData['personalInfo']>) => set((state) => ({
                 resume: {
@@ -212,8 +236,6 @@ export const useResumeStore = create<ResumeState>()(
             }),
 
             syncLanguagesFromGitHub: () => set((state) => {
-                const { processGithubLanguages } = require('@/utils/skillProcessor');
-
                 const allLanguages: { name: string; percentage: number; color?: string }[] = [];
                 state.githubRepos.forEach((repo) => {
                     if (repo.languages && Array.isArray(repo.languages)) {

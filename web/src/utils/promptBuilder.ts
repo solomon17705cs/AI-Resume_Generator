@@ -29,12 +29,40 @@ interface PromptContext {
  * Builds a strict, schema-enforcing prompt for AI resume generation
  */
 export function buildSchemaPrompt(context: PromptContext): string {
-  const { jobDescription, userData, atsType, targetRole, experienceLevel = 'EXPERIENCED', jdIntelligence, expandedKeywords } = context;
+  const {
+    jobDescription,
+    userData,
+    atsType,
+    targetRole,
+    experienceLevel = 'EXPERIENCED',
+    jdIntelligence,
+    expandedKeywords
+  } = context;
   const atsRules = ATSGenerationRules[atsType] || ATSGenerationRules.generic;
+
+  // Extract all verified skills for the "Evidence Buffer"
+  const verifiedSkills = new Set<string>();
+  userData.existingSkills?.forEach(cat => cat.skills?.forEach((s: string) => verifiedSkills.add(s)));
+  userData.existingExperience?.forEach(exp => {
+    exp.bullets?.forEach((b: string) => {
+      // Simple heuristic to extract potential skills from bullets (mostly proper nouns/tech)
+      const matches = b.match(/\b[A-Z][A-Za-z0-9+#.]*\b/g);
+      matches?.forEach(m => verifiedSkills.add(m));
+    });
+  });
+  userData.existingProjects?.forEach(proj => {
+    proj.technologies?.forEach((t: string) => verifiedSkills.add(t));
+    proj.bullets?.forEach((b: string) => {
+      const matches = b.match(/\b[A-Z][A-Za-z0-9+#.]*\b/g);
+      matches?.forEach(m => verifiedSkills.add(m));
+    });
+  });
+
+  const evidenceBuffer = Array.from(verifiedSkills).join(', ');
 
   return `You are an ATS Optimization Engine specialized in ${atsType.toUpperCase()} systems.
 
-CRITICAL MISSION: Generate a resume in STRICT JSON format that maximizes ATS compatibility.
+CRITICAL MISSION: Generate a resume in STRICT JSON format that maximizes ATS compatibility while maintaining 100% FACTUAL INTEGRITY.
 
 ═══════════════════════════════════════════════════════════════
 📋 CONTEXT
@@ -51,6 +79,16 @@ Job Description:
 """
 ${jobDescription.substring(0, 2000)}
 """
+
+═══════════════════════════════════════════════════════════════
+🛡️ EVIDENCE BUFFER (THE SOURCE OF TRUTH)
+═══════════════════════════════════════════════════════════════
+The following skills/technologies are VERIFIED from the candidate's history (Manual Input + GitHub + Projects):
+${evidenceBuffer}
+
+[STRICT RULE]: You are FORBIDDEN from adding any skill or technology that is NOT in the Evidence Buffer or the Job Description. 
+Do NOT hallucinate certifications, years of experience, or technical proficiencies. 
+If a keyword is in the JD but NOT in the Evidence Buffer, you may only include it if you can logically map it to an existing verified skill (e.g., if "React" is verified, you can talk about "Component Architecture").
 
 ${jdIntelligence ? `
 ═══════════════════════════════════════════════════════════════
@@ -93,12 +131,16 @@ Date Format: ${atsRules.dateFormat}
    - No invented skills or technologies
 
 2. PROFESSIONAL SUMMARY:
-   - Maximum 60 words
+   - Maximum 50 words
    - Third person (no "I am" or "I'm")
+   - Start with professional title + years experience OR key achievement
+   - AVOID weak phrases: "skilled in", "proficient in", "eager to", "passionate about"
+   - USE strong action: "Specialized in", "Engineered", "Led development of", "Built scalable"
+   - Include 2-3 specific technologies from job description
    - ${experienceLevel === 'FRESHER'
-      ? 'Focus: Education, academic foundation, technical aptitude, and eager to learn. No multi-year professional tenure.'
-      : 'Include: years of experience, top 3 skills, target role'}
-   - Match job description keywords naturally
+      ? 'For FRESHERS: Highlight academic projects, coursework, tech stack. Mention relevant internship or hackathon if available.'
+      : 'Include: years of experience, key achievement with metrics, target role'}
+   - Make it impactful and specific to the target job
 
 3. SKILLS:
    - Extract ONLY from job description
@@ -113,12 +155,15 @@ Date Format: ${atsRules.dateFormat}
    - 1-3 bullet points per project
 
 5. ${experienceLevel === 'FRESHER' ? 'ACADEMIC PROJECTS & INTERNSHIPS' : 'PROFESSIONAL EXPERIENCE'}:
-   - ${experienceLevel === 'FRESHER'
-      ? 'Prioritize academic projects and hackathons as primary source of proof. Highlight technical implementation details and university coursework mapping.'
-      : 'Focus on business impact, leadership, and multi-year professional achievements.'}
-   - ${atsRules.requireMetrics ? 'MUST include metric (%, $, time, scale)' : 'Include metrics (e.g., "improved project efficiency by 15%")'}
-   - No vague language ("various", "multiple", "several")
-   - Do NOT invent professional work history, corporate entities, or job titles. ONLY use provided data.
+    - ${experienceLevel === 'FRESHER'
+       ? 'For FRESHERS: Do NOT create fake work experience. Use Academic Projects, Internships, or Hackathons instead. If NO experience data provided, leave experience array EMPTY. DO NOT invent work history.'
+       : 'Focus on business impact, leadership, and multi-year professional achievements.'}
+    - ${atsRules.requireMetrics ? 'MUST include metric (%, $, time, scale)' : 'Include metrics when possible'}
+    - No vague language ("various", "multiple", "several")
+    - Do NOT invent professional work history, corporate entities, or job titles. ONLY use provided data.
+    - CRITICAL: If NO company is provided in user data, use 'N/A' or 'Not Provided'. NEVER invent a company name.
+    - CRITICAL: NEVER create fictional company names like "TechFlow Systems". Use EXACTLY what is provided or leave blank.
+    - CRITICAL: For FRESHERS with no work experience, leave experience array EMPTY or use academic projects.
 
 6. KEYWORD & PHRASE STRATEGY (CRITICAL):
     - Target Weighting: Role (35%), Core Tech (25%), Concepts (20%), Action Phrases (15%).
