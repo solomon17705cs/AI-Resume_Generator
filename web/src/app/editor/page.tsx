@@ -68,11 +68,7 @@ export default function EditorPage() {
     
     // Calculate center offset for initial centering
     const getCenterOffset = () => {
-        // Center the 210mm page in typical container  
-        const containerWidth = previewWidth || 600;
-        const pageWidth = 210 * 3.78; // 210mm to px (at 96dpi)
-        const offsetX = (containerWidth - pageWidth) / 2;
-        return { x: offsetX, y: 40 }; // Slight vertical offset
+        return { x: 0, y: 0 }; 
     };
 
     // Initialize with center offset
@@ -132,6 +128,22 @@ export default function EditorPage() {
             window.removeEventListener('mouseup', handleMouseUp);
         };
     }, [isResizing]);
+    
+    // Auto-scale preview when sidebar width or screen mode changes
+    useEffect(() => {
+        const pageWidth = 210 * 3.78; // 210mm to px
+        let availableWidth;
+        
+        if (isFullScreen) {
+            availableWidth = window.innerWidth - 160; // 80px padding each side in full screen
+        } else {
+            availableWidth = previewWidth - 80; // 40px padding each side in sidebar
+        }
+        
+        const newScale = availableWidth / pageWidth;
+        setPreviewScale(Math.min(isFullScreen ? 1.2 : 1, Math.max(0.3, newScale)));
+        setPanPosition({ x: 0, y: 0 }); // Reset position on auto-scale
+    }, [previewWidth, isFullScreen]);
 
     // Panning/Dragging Logic for Preview
     useEffect(() => {
@@ -1262,14 +1274,55 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                             </button>
                         </div>
                     </div>
-                    <div className="flex-1 overflow-auto p-8 bg-[#020617] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] flex items-start justify-center custom-scrollbar">
+
+                    {/* Factual Integrity Status - Moved to Top */}
+                    <div className="px-6 py-4 border-b border-white/5 space-y-3 bg-slate-950/40">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-emerald-500">
+                                <ShieldCheck size={12} />
+                                <h3 className="text-[8px] font-black uppercase tracking-[0.2em]">Factual Integrity</h3>
+                            </div>
+                            <div className="px-2 py-0.5 bg-emerald-500/10 rounded-full border border-emerald-500/20">
+                                <span className="text-[7px] font-black text-emerald-500 uppercase">Secure</span>
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <p className="text-[8px] text-slate-500 leading-relaxed italic">
+                                "Our system prevents AI hallucinations by creating a strict Evidence Buffer from your projects and history."
+                            </p>
+                            <div className="flex flex-wrap gap-1.5 pt-1">
+                                {isParsing ? (
+                                    <div className="w-full h-6 flex items-center justify-center bg-white/5 rounded-lg animate-pulse">
+                                        <span className="text-[7px] text-slate-500 uppercase tracking-widest font-black">Updating Buffer...</span>
+                                    </div>
+                                ) : (
+                                    <>
+                                        {resume.experience.length > 0 && (
+                                            <div className="px-2 py-1 bg-white/5 rounded-lg border border-white/5 flex items-center gap-1.5">
+                                                <div className="w-1 h-1 rounded-full bg-emerald-500" />
+                                                <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">{resume.experience.length} History signals</span>
+                                            </div>
+                                        )}
+                                        {resume.projects.length > 0 && (
+                                            <div className="px-2 py-1 bg-white/5 rounded-lg border border-white/5 flex items-center gap-1.5">
+                                                <div className="w-1 h-1 rounded-full bg-emerald-500" />
+                                                <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">{resume.projects.length} Project signals</span>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-auto bg-[#020617] bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] relative custom-scrollbar">
                         <div
-                            className={`drop-shadow-[0_40px_80px_rgba(0,0,0,0.9)] mb-20 mt-4 rounded-lg border border-white/5 transition-all duration-200 ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
+                            className={`drop-shadow-[0_40px_80px_rgba(0,0,0,0.9)] mb-20 mt-12 rounded-lg border border-white/5 transition-all duration-200 ${isPanning ? 'cursor-grabbing' : 'cursor-grab'} absolute left-1/2`}
                             style={{
                                 width: '210mm',
                                 minWidth: '210mm',
                                 minHeight: '297mm',
-                                transform: `scale(${previewScale}) translate(${panPosition.x}px, ${panPosition.y}px)`,
+                                transform: `translateX(-50%) scale(${previewScale}) translate(${panPosition.x}px, ${panPosition.y}px)`,
                                 transformOrigin: 'top center'
                             }}
                             onMouseDown={(e) => {
@@ -1285,46 +1338,6 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                                 isInteractive={true}
                                 onUpdate={updateResume}
                             />
-                        </div>
-
-                        {/* Factual Integrity Status */}
-                        <div className="px-6 py-6 border-b border-white/5 space-y-4">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2 text-emerald-500">
-                                    <ShieldCheck size={14} />
-                                    <h3 className="text-[9px] font-black uppercase tracking-[0.2em]">Factual Integrity</h3>
-                                </div>
-                                <div className="px-2 py-0.5 bg-emerald-500/10 rounded-full border border-emerald-500/20">
-                                    <span className="text-[7px] font-black text-emerald-500 uppercase">Secure</span>
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <p className="text-[9px] text-slate-500 leading-relaxed italic">
-                                    "Our system prevents AI hallucinations by creating a strict Evidence Buffer from your projects and history."
-                                </p>
-                                <div className="flex flex-wrap gap-1.5 pt-1">
-                                    {isParsing ? (
-                                        <div className="w-full h-8 flex items-center justify-center bg-white/5 rounded-lg animate-pulse">
-                                            <span className="text-[7px] text-slate-500 uppercase tracking-widest font-black">Updating Buffer...</span>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            {resume.experience.length > 0 && (
-                                                <div className="px-2 py-1 bg-white/5 rounded-lg border border-white/5 flex items-center gap-1.5">
-                                                    <div className="w-1 h-1 rounded-full bg-emerald-500" />
-                                                    <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">{resume.experience.length} History signals</span>
-                                                </div>
-                                            )}
-                                            {resume.projects.length > 0 && (
-                                                <div className="px-2 py-1 bg-white/5 rounded-lg border border-white/5 flex items-center gap-1.5">
-                                                    <div className="w-1 h-1 rounded-full bg-emerald-500" />
-                                                    <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">{resume.projects.length} Project signals</span>
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </aside>
@@ -1369,17 +1382,17 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                             </div>
 
                             {/* Preview Content - Centered with Zoom & Pan */}
-                            <div className="flex-1 overflow-auto p-12 flex items-start justify-center custom-scrollbar pt-8">
+                            <div className="flex-1 overflow-auto p-12 relative custom-scrollbar pt-8">
                                 <motion.div
                                     initial={{ scale: 0.95, opacity: 0 }}
                                     animate={{ scale: 1, opacity: 1 }}
                                     exit={{ scale: 0.95, opacity: 0 }}
                                     transition={{ duration: 0.2 }}
-                                    className={`drop-shadow-[0_40px_120px_rgba(0,0,0,0.9)] rounded-lg border border-white/10 ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
+                                    className={`drop-shadow-[0_40px_120px_rgba(0,0,0,0.9)] m-auto rounded-lg border border-white/10 ${isPanning ? 'cursor-grabbing' : 'cursor-grab'} absolute left-1/2`}
                                     style={{
                                         width: '210mm',
                                         minHeight: '297mm',
-                                        transform: `scale(${previewScale}) translate(${panPosition.x}px, ${panPosition.y}px)`,
+                                        transform: `translateX(-50%) scale(${previewScale}) translate(${panPosition.x}px, ${panPosition.y}px)`,
                                         transformOrigin: 'top center'
                                     }}
                                     onMouseDown={(e) => {

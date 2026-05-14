@@ -143,9 +143,10 @@ Date Format: ${atsRules.dateFormat}
    - Make it impactful and specific to the target job
 
 3. SKILLS:
-   - Extract ONLY from job description
+   - Prioritize skills from the Job Description.
+   - Supplement with skills from the Evidence Buffer to ensure comprehensive coverage.
    - Group by category (Languages, Frameworks, Tools, etc.)
-   - Minimum 3 skills per category
+   - Target 3-6 skills per category for a dense technical profile.
    - Include variants (e.g., JS, JavaScript, Node.js)
 
 4. PROJECTS:
@@ -208,7 +209,7 @@ Date Format: ${atsRules.dateFormat}
   "skills": [
     {
       "name": "string (category name)",
-      "skills": ["string", "string", ...] (min 3)
+      "skills": ["string", "string", ...] (aim for 3-6)
     }
   ]
 }
@@ -366,10 +367,10 @@ ${jobDescription}
 """
 
 Requirements:
-1. Extract ONLY skills explicitly mentioned in the job description
+1. Extract skills explicitly mentioned in the job description
 2. Categorize into: Languages, Frameworks, Tools, Methods, Domains
 3. Include variants(e.g., JS, JavaScript, Node.js)
-4. Minimum 3 skills per category
+4. Aim for 3+ skills per category where possible
 5. No generic terms("good communication", "team player")
 
 Output Format(JSON):

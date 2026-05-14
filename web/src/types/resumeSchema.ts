@@ -61,7 +61,7 @@ export const ProjectSchema = z.object({
 // Skills Schema
 export const SkillCategorySchema = z.object({
     name: z.string().min(3, "Category name required"),
-    skills: z.array(z.string().min(2)).min(3, "At least 3 skills per category")
+    skills: z.array(z.string().min(2)).min(1, "At least 1 skill per category")
 });
 
 // Professional Summary Schema

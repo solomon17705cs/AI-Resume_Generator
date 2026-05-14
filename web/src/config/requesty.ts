@@ -1,43 +1,70 @@
-// OpenRouter API Configuration
+/**
+ * requesty.ts — OpenRouter API Configuration
+
+ */
 
 export const REQUESTY_CONFIG = {
     baseURL: 'https://openrouter.ai/api/v1',
-    
-    // Models (in priority order - free models first)
+
+    // ─── Model Priority Lists ───────────────────────────────────────────────
+    // Each list is tried in order. First successful response wins.
+    // All models below are verified OpenRouter IDs.
+
     models: [
-        'qwen/qwen3.5-flash-02-23',        // Free Qwen
-        'deepseek/deepseek-v4-flash',       // Free Gemini alternative
-        'amazon/nova-micro-v1',           // Free Claude alternative
+        'qwen/qwen-2.5-72b-instruct',
+        'deepseek/deepseek-v4-flash',
+        'meta-llama/llama-3.3-70b-instruct',
+        'google/gemini-3.1-flash-lite',
     ],
-    
-    // Fallback order for each purpose
+
+
+    // models: [
+    //    'qwen/qwen3.5-flash-02-23',        // Free Qwen
+    //    'deepseek/deepseek-v4-flash',       // Free Gemini alternative
+    //    'amazon/nova-micro-v1',           // Free Claude alternative
+    //],
+
     modelPriorities: {
-        optimization: [
-            'qwen/qwen3.5-flash-02-23',
-            'deepseek/deepseek-v4-flash',
-        ],
-        analysis: [
-            'qwen/qwen3.5-flash-02-23', 
-            'deepseek/deepseek-v4-flash',
-        ],
-        generation: [
-            'qwen/qwen3.5-flash-02-23',
-            'amazon/nova-micro-v1',
-        ],
+        // Keyword/JD extraction — needs precision, not creativity
         extraction: [
-            'qwen/qwen3.5-flash-02-23',
+            'deepseek/deepseek-chat',
+            'qwen/qwen-2.5-72b-instruct',
+            'meta-llama/llama-3.3-70b-instruct',
         ],
+
+        // Resume/bullet optimization — needs instruction following
+        optimization: [
+            'meta-llama/llama-3.3-70b-instruct',
+            'qwen/qwen-2.5-72b-instruct',
+            'deepseek/deepseek-chat',
+        ],
+
+        // Strategic analysis/reasoning
+        analysis: [
+            'meta-llama/llama-3.3-70b-instruct',
+            'qwen/qwen-2.5-72b-instruct',
+            'google/gemini-3.1-flash-lite',
+        ],
+
+        // Summary/cover letter generation — needs writing quality
+        generation: [
+            'meta-llama/llama-3.3-70b-instruct',
+            'qwen/qwen-2.5-72b-instruct',
+            'deepseek/deepseek-chat',
+        ],
+
         fallback: [
-            'deepseek/deepseek-v4-flash',
-        ]
-    }
+            'google/gemini-3.1-flash-lite',
+            'deepseek/deepseek-chat',
+        ],
+    } as Record<string, string[]>,
 };
 
 export function getOpenRouterHeaders(apiKey: string) {
     return {
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': 'https://atsense.ai',
-        'X-Title': 'ATSense'
+        'X-Title': 'ATSense Resume Optimizer',
     };
 }
