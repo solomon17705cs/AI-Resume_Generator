@@ -86,8 +86,27 @@ export default function RecommendationPage() {
     // Admin Review States
     const [reviewingReq, setReviewingReq] = useState<RecommendationRequest | null>(null);
     const [adminLetter, setAdminLetter] = useState("");
-    const [adminSummary, setAdminSummary] = useState("");
     const [isGenerating, setIsGenerating] = useState(false);
+    
+    // Generation Parameters
+    const [genParams, setGenParams] = useState({
+        recommenderName: '',
+        recommenderTitle: '',
+        recommenderOrg: '',
+        recommenderEmail: '',
+        relationshipType: 'manager',
+        relationshipDuration: '',
+        howTheyKnow: '',
+        targetRole: '',
+        jobDescription: '',
+        personalityTraits: [] as string[],
+        purpose: 'fulltime' as 'fulltime' | 'internship' | 'masters' | 'phd' | 'scholarship' | 'promotion',
+        tone: 'professional' as 'formal' | 'warm' | 'professional',
+        specificAchievements: [] as string[]
+    });
+
+    const [achievementInput, setAchievementInput] = useState("");
+    const [traitInput, setTraitInput] = useState("");
 
     useEffect(() => {
         setIsHydrated(true);
@@ -127,10 +146,23 @@ export default function RecommendationPage() {
         setIsGenerating(true);
         try {
             const res = await axios.post('/api/generate-recommendation', {
-                adminSummary,
-                studentData: resume.personalInfo, // For demo, using current user's profile
-                company: reviewingReq.company,
-                purpose: reviewingReq.purpose
+                candidateName: reviewingReq.studentName,
+                candidateEmail: reviewingReq.studentEmail,
+                recommenderName: genParams.recommenderName,
+                recommenderTitle: genParams.recommenderTitle,
+                recommenderOrg: genParams.recommenderOrg,
+                recommenderEmail: genParams.recommenderEmail,
+                relationshipType: genParams.relationshipType,
+                relationshipDuration: genParams.relationshipDuration,
+                howTheyKnow: genParams.howTheyKnow,
+                targetCompany: reviewingReq.company,
+                targetRole: genParams.targetRole || (reviewingReq.purpose === 'Internship' ? 'Software Engineering Intern' : 'Software Engineer'),
+                purpose: genParams.purpose || reviewingReq.purpose.toLowerCase(),
+                resumeData: resume,
+                jobDescription: genParams.jobDescription,
+                specificAchievements: genParams.specificAchievements,
+                personalityTraits: genParams.personalityTraits,
+                tone: genParams.tone
             });
             if (res.data.success) {
                 setAdminLetter(res.data.letter);
@@ -151,7 +183,19 @@ export default function RecommendationPage() {
         updateRecommendationStatus(reviewingReq.id, 'Approved', adminLetter);
         setReviewingReq(null);
         setAdminLetter("");
-        setAdminSummary("");
+        setGenParams({
+            recommenderName: '',
+            recommenderTitle: '',
+            recommenderOrg: '',
+            recommenderEmail: '',
+            relationshipType: 'manager',
+            relationshipDuration: '',
+            howTheyKnow: '',
+            targetRole: '',
+            personalityTraits: [],
+            tone: 'professional',
+            specificAchievements: []
+        });
     };
 
     const isAdmin = userRole === 'admin';
@@ -453,23 +497,183 @@ export default function RecommendationPage() {
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                                         {/* AI Assistance Panel */}
                                         <div className="space-y-6">
-                                            <div className="p-8 bg-blue-600/5 border border-blue-500/20 rounded-[32px] space-y-6">
+                                            <div className="p-8 bg-blue-600/5 border border-blue-500/20 rounded-[32px] space-y-6 overflow-y-auto max-h-[600px] custom-scrollbar">
                                                 <div className="flex items-center gap-3">
                                                     <Wand2 className="text-blue-500" size={20} />
                                                     <h3 className="text-sm font-black uppercase tracking-widest">AI Letter Agent</h3>
                                                 </div>
-                                                <div className="space-y-3">
-                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Write a brief summary/context</label>
+                                                
+                                                {/* Recommender Info Section */}
+                                                <div className="space-y-4 pt-2">
+                                                    <div className="flex justify-between items-center">
+                                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Recommender Identity</h4>
+                                                        <select 
+                                                            value={genParams.purpose}
+                                                            onChange={(e) => setGenParams({...genParams, purpose: e.target.value as any})}
+                                                            className="bg-slate-950 border border-white/5 rounded-lg px-2 py-1 text-[9px] font-black uppercase text-emerald-400"
+                                                        >
+                                                            <option value="fulltime">Full-Time Job</option>
+                                                            <option value="internship">Internship</option>
+                                                            <option value="masters">Masters Program</option>
+                                                            <option value="phd">PhD Program</option>
+                                                            <option value="scholarship">Scholarship</option>
+                                                            <option value="promotion">Promotion</option>
+                                                        </select>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <input 
+                                                            type="text" 
+                                                            placeholder="Full Name"
+                                                            value={genParams.recommenderName}
+                                                            onChange={(e) => setGenParams({...genParams, recommenderName: e.target.value})}
+                                                            className="bg-slate-950 border border-white/5 rounded-xl px-4 py-3 text-xs text-white focus:border-blue-500 transition-all"
+                                                        />
+                                                        <input 
+                                                            type="text" 
+                                                            placeholder="Current Title"
+                                                            value={genParams.recommenderTitle}
+                                                            onChange={(e) => setGenParams({...genParams, recommenderTitle: e.target.value})}
+                                                            className="bg-slate-950 border border-white/5 rounded-xl px-4 py-3 text-xs text-white focus:border-blue-500 transition-all"
+                                                        />
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <input 
+                                                            type="text" 
+                                                            placeholder="Organization"
+                                                            value={genParams.recommenderOrg}
+                                                            onChange={(e) => setGenParams({...genParams, recommenderOrg: e.target.value})}
+                                                            className="bg-slate-950 border border-white/5 rounded-xl px-4 py-3 text-xs text-white focus:border-blue-500 transition-all"
+                                                        />
+                                                        <input 
+                                                            type="email" 
+                                                            placeholder="Email (Optional)"
+                                                            value={genParams.recommenderEmail}
+                                                            onChange={(e) => setGenParams({...genParams, recommenderEmail: e.target.value})}
+                                                            className="bg-slate-950 border border-white/5 rounded-xl px-4 py-3 text-xs text-white focus:border-blue-500 transition-all"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {/* Target Details Section */}
+                                                <div className="space-y-4">
+                                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Target Role & Requirements</h4>
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder="Exact Target Role (e.g. Senior Backend Engineer)"
+                                                        value={genParams.targetRole}
+                                                        onChange={(e) => setGenParams({...genParams, targetRole: e.target.value})}
+                                                        className="w-full bg-slate-950 border border-white/5 rounded-xl px-4 py-3 text-xs text-white focus:border-blue-500 transition-all"
+                                                    />
                                                     <textarea
-                                                        value={adminSummary}
-                                                        onChange={(e) => setAdminSummary(e.target.value)}
-                                                        className="w-full h-32 bg-slate-950 border border-white/5 rounded-2xl p-5 text-xs text-slate-300 focus:outline-none focus:border-blue-500 transition-all resize-none leading-relaxed"
-                                                        placeholder="e.g. Solomon is an exceptional engineer with a focus on system optimization and high-scale architecture..."
+                                                        value={genParams.jobDescription}
+                                                        onChange={(e) => setGenParams({...genParams, jobDescription: e.target.value})}
+                                                        className="w-full h-32 bg-slate-950 border border-white/5 rounded-xl p-4 text-xs text-slate-300 focus:outline-none focus:border-blue-500 transition-all resize-none leading-relaxed"
+                                                        placeholder="Paste Job Description / Program Details here (Optional - for keyword alignment)"
                                                     />
                                                 </div>
+
+                                                {/* Context Section */}
+                                                <div className="space-y-4">
+                                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Relationship Context</h4>
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <select 
+                                                            value={genParams.relationshipType}
+                                                            onChange={(e) => setGenParams({...genParams, relationshipType: e.target.value})}
+                                                            className="bg-slate-950 border border-white/5 rounded-xl px-4 py-3 text-xs text-white focus:border-blue-500 transition-all"
+                                                        >
+                                                            <option value="manager">Manager</option>
+                                                            <option value="professor">Professor</option>
+                                                            <option value="colleague">Colleague</option>
+                                                            <option value="mentor">Mentor</option>
+                                                            <option value="internship_supervisor">Internship Supervisor</option>
+                                                        </select>
+                                                        <input 
+                                                            type="text" 
+                                                            placeholder="Duration (e.g. 2 years)"
+                                                            value={genParams.relationshipDuration}
+                                                            onChange={(e) => setGenParams({...genParams, relationshipDuration: e.target.value})}
+                                                            className="bg-slate-950 border border-white/5 rounded-xl px-4 py-3 text-xs text-white focus:border-blue-500 transition-all"
+                                                        />
+                                                    </div>
+                                                    <textarea
+                                                        value={genParams.howTheyKnow}
+                                                        onChange={(e) => setGenParams({...genParams, howTheyKnow: e.target.value})}
+                                                        className="w-full h-20 bg-slate-950 border border-white/5 rounded-xl p-4 text-xs text-slate-300 focus:outline-none focus:border-blue-500 transition-all resize-none leading-relaxed"
+                                                        placeholder="Specific context (e.g. 'supervised during final year project')"
+                                                    />
+                                                </div>
+
+
+
+                                                {/* Achievements Section */}
+                                                <div className="space-y-4">
+                                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Key Achievements / Observations</h4>
+                                                    <div className="flex gap-2">
+                                                        <input 
+                                                            type="text" 
+                                                            placeholder="e.g. Delivered 20% performance boost in Q3"
+                                                            value={achievementInput}
+                                                            onChange={(e) => setAchievementInput(e.target.value)}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter' && achievementInput) {
+                                                                    setGenParams({...genParams, specificAchievements: [...genParams.specificAchievements, achievementInput]});
+                                                                    setAchievementInput("");
+                                                                }
+                                                            }}
+                                                            className="flex-1 bg-slate-950 border border-white/5 rounded-xl px-4 py-3 text-xs text-white focus:border-blue-500 transition-all"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        {genParams.specificAchievements.map((a, idx) => (
+                                                            <div key={idx} className="p-3 bg-white/5 rounded-xl text-[10px] text-slate-400 border border-white/10 flex justify-between items-center group">
+                                                                <span className="leading-relaxed">{a}</span>
+                                                                <button onClick={() => setGenParams({...genParams, specificAchievements: genParams.specificAchievements.filter((_, i) => i !== idx)})} className="text-slate-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">×</button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Personality & Traits */}
+                                                <div className="space-y-4">
+                                                    <div className="flex justify-between items-center">
+                                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Traits & Tone</h4>
+                                                        <select 
+                                                            value={genParams.tone}
+                                                            onChange={(e) => setGenParams({...genParams, tone: e.target.value as any})}
+                                                            className="bg-slate-950 border border-white/5 rounded-lg px-2 py-1 text-[9px] font-black uppercase text-blue-400"
+                                                        >
+                                                            <option value="formal">Formal</option>
+                                                            <option value="professional">Professional</option>
+                                                            <option value="warm">Warm</option>
+                                                        </select>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <input 
+                                                            type="text" 
+                                                            placeholder="Add trait (e.g. Curiosity)"
+                                                            value={traitInput}
+                                                            onChange={(e) => setTraitInput(e.target.value)}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter' && traitInput) {
+                                                                    setGenParams({...genParams, personalityTraits: [...genParams.personalityTraits, traitInput]});
+                                                                    setTraitInput("");
+                                                                }
+                                                            }}
+                                                            className="flex-1 bg-slate-950 border border-white/5 rounded-xl px-4 py-3 text-xs text-white focus:border-blue-500 transition-all"
+                                                        />
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {genParams.personalityTraits.map((t, idx) => (
+                                                            <span key={idx} className="px-2 py-1 bg-white/5 rounded-lg text-[9px] text-slate-400 border border-white/10 flex items-center gap-2">
+                                                                {t} <button onClick={() => setGenParams({...genParams, personalityTraits: genParams.personalityTraits.filter((_, i) => i !== idx)})} className="hover:text-red-500">×</button>
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
                                                 <button
                                                     onClick={handleGenerateAI}
-                                                    disabled={isGenerating}
+                                                    disabled={isGenerating || !genParams.recommenderName}
                                                     className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-blue-500/20 flex items-center justify-center gap-3 hover:bg-blue-500 transition-all disabled:opacity-50"
                                                 >
                                                     {isGenerating ? "Consulting AI..." : "Generate Neural Letter"}
@@ -496,7 +700,7 @@ export default function RecommendationPage() {
                                             <textarea
                                                 value={adminLetter}
                                                 onChange={(e) => setAdminLetter(e.target.value)}
-                                                className="w-full h-[400px] bg-slate-950 border border-white/5 rounded-[32px] p-8 text-xs text-slate-300 focus:outline-none focus:border-emerald-500 transition-all resize-none leading-relaxed font-sans"
+                                                className="w-full h-[600px] bg-slate-950 border border-white/5 rounded-[32px] p-8 text-xs text-slate-300 focus:outline-none focus:border-emerald-500 transition-all resize-none leading-relaxed font-sans custom-scrollbar"
                                                 placeholder="Finalize your recommendation letter here..."
                                             />
                                         </div>

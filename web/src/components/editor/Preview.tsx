@@ -135,8 +135,8 @@ export const Preview: React.FC<PreviewProps> = ({ data, scale = 1, jobDescriptio
                         <section key="education">
                             <SectionTitle title="Education" />
                             <div className="space-y-3">
-                                {education.length > 0 ? education.map((edu) => (
-                                    <div key={edu.id} className="flex justify-between items-baseline">
+                                {education.length > 0 ? education.map((edu, i) => (
+                                    <div key={edu.id || i} className="flex justify-between items-baseline">
                                         <div className="text-[10pt]">
                                             <span className={`font-extrabold ${edu.institution.startsWith('[') ? 'text-slate-400' : 'text-slate-900'}`}>{edu.institution}</span>
                                             <span className="mx-2 text-slate-400">|</span>
@@ -155,8 +155,8 @@ export const Preview: React.FC<PreviewProps> = ({ data, scale = 1, jobDescriptio
                         <section key="experience" className="space-y-4">
                             <SectionTitle title={isFresher ? "Academic & Professional Experience" : "Professional Experience"} />
                             <div className="space-y-6">
-                                {experience.length > 0 ? experience.map((exp) => (
-                                    <div key={exp.id} className="space-y-2">
+                                {experience.length > 0 ? experience.map((exp, i) => (
+                                    <div key={exp.id || i} className="space-y-2">
                                         <div className="flex justify-between items-baseline">
                                             <h3 className="font-extrabold text-[11pt] text-slate-900 tracking-tight">{exp.company || '[Company Name]'}</h3>
                                             <span className="text-[9pt] font-black text-slate-500 uppercase tracking-widest">{exp.location || '[Location]'}</span>
@@ -166,7 +166,7 @@ export const Preview: React.FC<PreviewProps> = ({ data, scale = 1, jobDescriptio
                                             <span className="text-[9pt] font-bold text-slate-700">{exp.startDate || '[Start Date]'} – {exp.endDate || '[End Date]'}</span>
                                         </div>
                                         <ul className="list-disc list-outside ml-4 text-[9.5pt] space-y-1.5 text-slate-800">
-                                            {exp.bullets.length > 0 && exp.bullets.some(b => b.trim()) ? exp.bullets.map((bullet, idx) => (
+                                            {(exp.bullets ?? []).length > 0 && (exp.bullets ?? []).some(b => b?.trim()) ? (exp.bullets ?? []).map((bullet, idx) => (
                                                 bullet && <li key={idx} className="pl-2 leading-[1.4] font-medium">{bullet}</li>
                                             )) : (
                                                 <li className="pl-2 leading-[1.4] font-medium text-slate-400 italic">[Add your key accomplishments and impact here using metrics if possible]</li>
@@ -184,14 +184,14 @@ export const Preview: React.FC<PreviewProps> = ({ data, scale = 1, jobDescriptio
                         <section key="projects" className="space-y-4">
                             <SectionTitle title="Technical Projects" />
                             <div className="space-y-4">
-                                {projects.length > 0 ? projects.map((proj) => (
-                                    <div key={proj.id} className="space-y-1">
+                                {projects.length > 0 ? projects.map((proj, i) => (
+                                    <div key={proj.id || i} className="space-y-1">
                                         <div className="flex justify-between items-baseline">
                                             <h3 className="font-extrabold text-[10pt] text-slate-900 uppercase tracking-tight">{proj.name || '[Project Name]'}</h3>
                                             {proj.link && <span className="text-[8pt] font-bold text-blue-700 underline italic lowercase">{proj.link}</span>}
                                         </div>
-                                        <ul className="list-disc list-outside ml-4 text-[9pt] space-y-1 text-slate-700">
-                                            {proj.bullets.length > 0 && proj.bullets.some(b => b.trim()) ? proj.bullets.map((bullet, idx) => (
+                                        <ul className="list-disc list-outside ml-4 text-[9.5pt] space-y-1 text-slate-700">
+                                            {(proj.bullets ?? []).length > 0 && (proj.bullets ?? []).some(b => b?.trim()) ? (proj.bullets ?? []).map((bullet, idx) => (
                                                 bullet && <li key={idx} className="pl-2 leading-[1.3] font-medium">{bullet}</li>
                                             )) : (
                                                 <li className="pl-2 leading-[1.3] font-medium text-slate-400 italic">[Describe your technical contribution and the technologies used]</li>
@@ -212,8 +212,8 @@ export const Preview: React.FC<PreviewProps> = ({ data, scale = 1, jobDescriptio
                                 {skills.length > 0 ? skills.map((cat) => (
                                     <div key={cat.id} className="text-[9.5pt]">
                                         <span className={`font-extrabold uppercase tracking-wider mr-2 ${cat.name.startsWith('[') || cat.name.includes('New Domain') ? 'text-slate-400' : 'text-slate-900'}`}>{cat.name}:</span>
-                                        <span className={`font-medium ${cat.skills.length === 0 ? 'text-slate-400 italic' : 'text-slate-800'}`}>
-                                            {cat.skills.length > 0 ? cat.skills.filter(s => s.trim()).join(', ') : (isInteractive ? '[Add skills...]' : '')}
+                                        <span className={`font-medium ${(cat.skills ?? []).length === 0 ? 'text-slate-400 italic' : 'text-slate-800'}`}>
+                                            {(cat.skills ?? []).length > 0 ? (cat.skills ?? []).filter(s => s?.trim()).join(', ') : (isInteractive ? '[Add skills...]' : '')}
                                         </span>
                                     </div>
                                 )) : isInteractive && (

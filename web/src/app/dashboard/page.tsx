@@ -278,7 +278,7 @@ export default function DashboardPage() {
                                 ) : (
                                     githubRepos.slice(0, 6).map((repo, i) => (
                                         <motion.div
-                                            key={repo.id}
+                                            key={`repo-${repo.id || i}`}
                                             initial={{ opacity: 0, y: 10 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             transition={{ delay: i * 0.05 }}
@@ -329,15 +329,15 @@ export default function DashboardPage() {
                                 <h2 className="text-lg font-black uppercase tracking-widest text-slate-400">Project Workspace</h2>
                             </div>
                             <div className="grid grid-cols-1 gap-4">
-                                {resume.projects.map((proj) => (
-                                    <div key={proj.id} className="p-6 bg-slate-900 border border-white/5 rounded-3xl flex items-center justify-between group">
+                                {resume.projects?.map((proj, i) => (
+                                    <div key={`proj-snap-${proj.id || i}`} className="p-6 bg-slate-900 border border-white/5 rounded-3xl flex items-center justify-between group">
                                         <div className="flex items-center gap-6">
                                             <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500">
                                                 <ShieldCheck size={24} />
                                             </div>
                                             <div>
                                                 <h3 className="font-bold text-lg text-white">{proj.name}</h3>
-                                                <p className="text-xs text-slate-500 font-medium">{proj.technologies.join(' • ')}</p>
+                                                <p className="text-xs text-slate-500 font-medium">{(proj.technologies ?? []).join(' • ')}</p>
                                             </div>
                                         </div>
                                         <Link href="/editor" className="p-3 bg-white/5 rounded-xl text-slate-400 hover:bg-blue-600 hover:text-white transition-all">
