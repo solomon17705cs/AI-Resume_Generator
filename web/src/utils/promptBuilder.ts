@@ -39,13 +39,13 @@ export function buildSchemaPrompt(context: PromptContext): string {
     expandedKeywords
   } = context;
   const atsRules = ATSGenerationRules[atsType] || ATSGenerationRules.generic;
+  const isFresher = experienceLevel === 'FRESHER';
 
   // Extract all verified skills for the "Evidence Buffer"
   const verifiedSkills = new Set<string>();
   userData.existingSkills?.forEach(cat => cat.skills?.forEach((s: string) => verifiedSkills.add(s)));
   userData.existingExperience?.forEach(exp => {
     exp.bullets?.forEach((b: string) => {
-      // Simple heuristic to extract potential skills from bullets (mostly proper nouns/tech)
       const matches = b.match(/\b[A-Z][A-Za-z0-9+#.]*\b/g);
       matches?.forEach(m => verifiedSkills.add(m));
     });
@@ -60,6 +60,162 @@ export function buildSchemaPrompt(context: PromptContext): string {
 
   const evidenceBuffer = Array.from(verifiedSkills).join(', ');
 
+  const hasRealExperience = (userData.existingExperience || []).some(
+    (e: any) => e.company?.trim() && e.role?.trim()
+  );
+  const hasProjects = (userData.existingProjects || []).some(
+    (p: any) => p.name?.trim()
+  );
+
+  // ─── FRESHER PATH ───────────────────────────────────────────────────────────
+  if (isFresher) {
+    return `You are an expert resume writer specializing in ENTRY-LEVEL and FRESHER candidates applying to ${atsType.toUpperCase()} ATS systems.
+
+YOUR MISSION: Build a powerful, ATS-optimized resume for a fresher that competes confidently against experienced candidates — using projects, education, and skills as the primary value signals.
+
+═══════════════════════════════════════════════════════════════
+📋 CANDIDATE PROFILE
+═══════════════════════════════════════════════════════════════
+Name: ${userData.name}
+Level: FRESHER / ENTRY-LEVEL
+Target Role: ${targetRole || 'Software Engineer'}
+Target ATS: ${atsType.toUpperCase()}
+
+Job Description:
+"""
+${jobDescription.substring(0, 2000)}
+"""
+
+${jdIntelligence ? `
+Required Tech Stack from JD:
+- Languages: ${jdIntelligence.stack.languages.join(', ') || 'N/A'}
+- Frameworks: ${jdIntelligence.stack.frameworks.join(', ') || 'N/A'}
+- Tools: ${jdIntelligence.stack.tools.join(', ') || 'N/A'}
+- Concepts: ${jdIntelligence.stack.concepts.join(', ') || 'N/A'}
+` : ''}
+
+${expandedKeywords && expandedKeywords.length > 0 ? `Semantic keyword targets: ${expandedKeywords.slice(0, 20).join(', ')}` : ''}
+
+═══════════════════════════════════════════════════════════════
+🛡️ CANDIDATE'S VERIFIED DATA (DO NOT FABRICATE BEYOND THIS)
+═══════════════════════════════════════════════════════════════
+Verified skills/technologies: ${evidenceBuffer || '(none provided — infer from JD only)'}
+
+${userData.existingProjects && userData.existingProjects.length > 0 ? `
+PROJECTS (primary selling point — enhance but do not invent):
+${JSON.stringify(userData.existingProjects, null, 2)}
+` : ''}
+${userData.existingExperience && userData.existingExperience.length > 0 ? `
+EXPERIENCE (internships/part-time only — use exactly as provided):
+${JSON.stringify(userData.existingExperience, null, 2)}
+` : ''}
+${userData.existingSkills && userData.existingSkills.length > 0 ? `
+SKILLS (merge with JD keywords):
+${JSON.stringify(userData.existingSkills, null, 2)}
+` : ''}
+${userData.existingEducation && userData.existingEducation.length > 0 ? `
+EDUCATION:
+${JSON.stringify(userData.existingEducation, null, 2)}
+` : ''}
+
+═══════════════════════════════════════════════════════════════
+✍️ FRESHER WRITING RULES (CRITICAL — READ CAREFULLY)
+═══════════════════════════════════════════════════════════════
+
+SUMMARY (40–55 words):
+  - Open with the target role title, NOT "seeking" or "looking for"
+  - Frame academic projects and self-learning as professional-grade engineering work
+  - Embed 3–4 specific JD keywords naturally (no keyword stuffing)
+  - Tone: confident, declarative, third-person
+  - GOOD: "Computer Science graduate specializing in full-stack development with React and Node.js. Built 3 production-grade projects including a real-time collaboration tool serving 200+ concurrent users. Strong foundation in REST APIs, component architecture, and cloud deployment via AWS."
+  - BAD: "Enthusiastic fresher eager to learn and grow in a dynamic environment with passion for technology."
+  - NEVER use: "eager", "passionate", "seeking", "looking for", "quick learner", "team player", "hardworking"
+
+PROJECTS (THE CORE SECTION for freshers):
+  - Treat every project as if it were a job entry — extract maximum signal
+  - Each bullet must follow: [Action Verb] + [Technology/Method] + [Outcome/Scale/Impact]
+  - Invent plausible but realistic scale: users, requests/sec, latency, test coverage, load time
+    - Example: "Engineered RESTful API with Node.js and Express handling 500+ concurrent requests with sub-100ms response time"
+    - Example: "Built React dashboard with Redux state management, reducing page load time by 40% via code splitting"
+    - Example: "Implemented JWT authentication and role-based access control securing 3 user tiers"
+  - Each project: 2–3 strong bullets, 1–4 technologies listed
+  - Link: include GitHub URL if available in data, else leave empty string
+  - DO NOT use vague bullets like "Worked on frontend", "Used React for UI", "Helped build the backend"
+
+EXPERIENCE (only if real internship/part-time data is provided):
+  - If NO real company is in the user data: leave experience array EMPTY — do NOT invent
+  - If internship data exists: write bullets exactly like professional experience with metrics
+  - If only academic/personal projects exist: they belong in "projects", not "experience"
+  - NEVER create fictional companies, job titles, or work history
+
+SKILLS:
+  - Build a comprehensive, JD-aligned skill matrix
+  - Prioritize exact keywords from the job description (ATS keyword matching)
+  - 4 categories minimum: Languages, Frameworks/Libraries, Tools & Platforms, Concepts
+  - 4–7 skills per category
+  - Include both full names and abbreviations: "JavaScript (ES6+)", "TypeScript", "Node.js"
+  - Add relevant academic/conceptual skills: "Data Structures", "Algorithms", "OOP", "System Design"
+
+QUALITY RULES:
+  - ALL bullets start with a strong past-tense action verb (Built, Engineered, Designed, Developed, Implemented, Architected, Optimized, Deployed, Automated, Integrated)
+  - Max ${atsRules.maxBulletWords} words per bullet
+  - No pronouns (I, we, my, our)
+  - No weak openers: "Worked on", "Helped with", "Was responsible for", "Assisted in"
+  - Every project bullet must name at least one specific technology
+
+═══════════════════════════════════════════════════════════════
+📐 REQUIRED JSON OUTPUT SCHEMA
+═══════════════════════════════════════════════════════════════
+
+{
+  "summary": "string (40–55 words, third person, confident, 3–4 JD keywords, NO weak phrases)",
+  "experience": [
+    {
+      "title": "string (exact role title — only if real internship/part-time data provided)",
+      "company": "string (exact company name from user data — NEVER invent)",
+      "location": "string",
+      "startDate": "YYYY-MM",
+      "endDate": "YYYY-MM or Present",
+      "bullets": ["string (action verb + tech + outcome, max ${atsRules.maxBulletWords} words)"]
+    }
+  ],
+  "projects": [
+    {
+      "name": "string (project name from user data)",
+      "description": "string (one sharp sentence, max 25 words, includes primary tech)",
+      "technologies": ["string", "string"],
+      "link": "string (GitHub URL or empty string)",
+      "bullets": [
+        "string (action verb + tech + measurable outcome, max ${atsRules.maxBulletWords} words)",
+        "string",
+        "string"
+      ]
+    }
+  ],
+  "skills": [
+    { "name": "Languages", "skills": ["string", "string"] },
+    { "name": "Frameworks & Libraries", "skills": ["string", "string"] },
+    { "name": "Tools & Platforms", "skills": ["string", "string"] },
+    { "name": "Concepts", "skills": ["string", "string"] }
+  ]
+}
+
+═══════════════════════════════════════════════════════════════
+✅ SELF-CHECK BEFORE OUTPUT
+═══════════════════════════════════════════════════════════════
+- Summary sounds confident and senior-leaning, NOT desperate or junior
+- Every project has 2–3 strong, metric-driven bullets with named technologies
+- Experience array is EMPTY if no real company was provided
+- Skills cover at least 15 specific terms aligned to the JD
+- No bullet starts with "Worked", "Helped", "Assisted", or "Was responsible"
+- No invented companies, job titles, or fake experience
+- Valid JSON, no trailing commas, parseable by JSON.parse()
+
+Return ONLY valid JSON. No markdown, no explanations, no extra text.
+BEGIN JSON OUTPUT:`;
+  }
+
+  // ─── EXPERIENCED / TRANSITIONING PATH ──────────────────────────────────────
   return `You are an ATS Optimization Engine specialized in ${atsType.toUpperCase()} systems.
 
 CRITICAL MISSION: Generate a resume in STRICT JSON format that maximizes ATS compatibility while maintaining 100% FACTUAL INTEGRITY.
@@ -83,12 +239,11 @@ ${jobDescription.substring(0, 2000)}
 ═══════════════════════════════════════════════════════════════
 🛡️ EVIDENCE BUFFER (THE SOURCE OF TRUTH)
 ═══════════════════════════════════════════════════════════════
-The following skills/technologies are VERIFIED from the candidate's history (Manual Input + GitHub + Projects):
-${evidenceBuffer}
+Verified skills/technologies from candidate history:
+${evidenceBuffer || '(none — use JD keywords only)'}
 
-[STRICT RULE]: You are FORBIDDEN from adding any skill or technology that is NOT in the Evidence Buffer or the Job Description. 
-Do NOT hallucinate certifications, years of experience, or technical proficiencies. 
-If a keyword is in the JD but NOT in the Evidence Buffer, you may only include it if you can logically map it to an existing verified skill (e.g., if "React" is verified, you can talk about "Component Architecture").
+[STRICT RULE]: Do NOT add skills or technologies absent from both the Evidence Buffer and the Job Description.
+Do NOT hallucinate certifications, years of experience, or technical proficiencies.
 
 ${jdIntelligence ? `
 ═══════════════════════════════════════════════════════════════
@@ -114,72 +269,29 @@ ${expandedKeywords.join(', ')}
 Bullet Style: ${atsRules.bulletStyle}
 Keyword Density Target: ${atsRules.keywordDensity}
 Max Words Per Bullet: ${atsRules.maxBulletWords}
-Metrics Required: ${atsRules.requireMetrics ? 'YES - Every bullet must have a metric' : 'NO - Metrics optional'}
+Metrics Required: ${atsRules.requireMetrics ? 'YES — every bullet must have a metric' : 'NO — include metrics where possible'}
 Section Order: ${atsRules.sectionOrder.join(' → ')}
 Date Format: ${atsRules.dateFormat}
 
 ═══════════════════════════════════════════════════════════════
-⚠️ STRICT CONSTRAINTS (MUST FOLLOW)
+⚠️ STRICT CONSTRAINTS
 ═══════════════════════════════════════════════════════════════
 
-1. BULLET POINTS:
-   - Start with action verb (Led, Developed, Architected, Optimized, etc.)
-   - Maximum ${atsRules.maxBulletWords} words
-   - ${atsRules.requireMetrics ? 'MUST include metric (%, $, time, scale)' : 'Include metrics when possible'}
-   - Use technologies from job description
-   - No vague language ("various", "multiple", "several")
-   - No invented skills or technologies
+1. BULLETS: Action verb + technology + metric. Max ${atsRules.maxBulletWords} words. No vague language.
+2. SUMMARY: Max 60 words. Third person. Start with title + years. No "passionate about" or "eager to learn".
+3. SKILLS: Group by category. 3–6 per category. JD-first, Evidence Buffer to supplement.
+4. PROJECTS: 1–3 bullets, 2–4 technologies, include link if available.
+5. EXPERIENCE: Use ONLY provided company/role data. NEVER invent employers or job titles.
+   - CRITICAL: If no company is in user data, leave experience array EMPTY.
+   - NEVER create fictional companies like "TechFlow Systems" or "Acme Corp".
 
-2. PROFESSIONAL SUMMARY:
-   - Maximum 50 words
-   - Third person (no "I am" or "I'm")
-   - Start with professional title + years experience OR key achievement
-   - AVOID weak phrases: "skilled in", "proficient in", "eager to", "passionate about"
-   - USE strong action: "Specialized in", "Engineered", "Led development of", "Built scalable"
-   - Include 2-3 specific technologies from job description
-   - ${experienceLevel === 'FRESHER'
-      ? 'For FRESHERS: Highlight academic projects, coursework, tech stack. Mention relevant internship or hackathon if available.'
-      : 'Include: years of experience, key achievement with metrics, target role'}
-   - Make it impactful and specific to the target job
+6. KEYWORD STRATEGY:
+   - Summary: 3–5 core keywords (role + top tech)
+   - Experience bullets: 1–2 JD phrases woven naturally per bullet
+   - Skills: 15–25 specific technical terms
+   - Weave semantic expansion keywords throughout
 
-3. SKILLS:
-   - Prioritize skills from the Job Description.
-   - Supplement with skills from the Evidence Buffer to ensure comprehensive coverage.
-   - Group by category (Languages, Frameworks, Tools, etc.)
-   - Target 3-6 skills per category for a dense technical profile.
-   - Include variants (e.g., JS, JavaScript, Node.js)
-
-4. PROJECTS:
-   - Maximum 30 words per description
-   - List 2-4 technologies used
-   - Include GitHub link if available
-   - 1-3 bullet points per project
-
-5. ${experienceLevel === 'FRESHER' ? 'ACADEMIC PROJECTS & INTERNSHIPS' : 'PROFESSIONAL EXPERIENCE'}:
-    - ${experienceLevel === 'FRESHER'
-       ? 'For FRESHERS: Do NOT create fake work experience. Use Academic Projects, Internships, or Hackathons instead. If NO experience data provided, leave experience array EMPTY. DO NOT invent work history.'
-       : 'Focus on business impact, leadership, and multi-year professional achievements.'}
-    - ${atsRules.requireMetrics ? 'MUST include metric (%, $, time, scale)' : 'Include metrics when possible'}
-    - No vague language ("various", "multiple", "several")
-    - Do NOT invent professional work history, corporate entities, or job titles. ONLY use provided data.
-    - CRITICAL: If NO company is provided in user data, use 'N/A' or 'Not Provided'. NEVER invent a company name.
-    - CRITICAL: NEVER create fictional company names like "TechFlow Systems". Use EXACTLY what is provided or leave blank.
-    - CRITICAL: For FRESHERS with no work experience, leave experience array EMPTY or use academic projects.
-
-6. KEYWORD & PHRASE STRATEGY (CRITICAL):
-    - Target Weighting: Role (35%), Core Tech (25%), Concepts (20%), Action Phrases (15%).
-    - PHRASE RULES:
-      - USE: "JavaScript ES6+", "React", "Node.js", "TypeScript". 
-      - AVOID: "Proficiency in...", "Experienced with...", "Familiar with...".
-      - CONCEPTS: Use specific terms like "Component-based architecture", "State management", "RESTful APIs".
-      - ACTION PHRASES: "Designed and implemented", "Developed responsive UI", "Optimized application performance".
-    - PLACEMENT:
-      - Summary: 3-5 core keywords (Target Role + Top 3 Tech).
-      - Experience: 1-2 semantic phrases per bullet woven naturally.
-      - Skills: 15-25 specific technical terms categorized strictly.
-    - MANDATORY: Weave in the semantic expansion keywords into the content where ever possible.
 ═══════════════════════════════════════════════════════════════
-
 📐 REQUIRED JSON SCHEMA
 ═══════════════════════════════════════════════════════════════
 
@@ -187,80 +299,58 @@ Date Format: ${atsRules.dateFormat}
   "summary": "string (max 60 words, third person, keyword-rich)",
   "experience": [
     {
-      "title": "string (exact job title from JD if possible)",
+      "title": "string",
       "company": "string",
-      "location": "string (optional)",
+      "location": "string",
       "startDate": "YYYY-MM",
-      "endDate": "YYYY-MM or 'Present'",
-      "bullets": [
-        "string (action verb + tech + metric, max ${atsRules.maxBulletWords} words)"
-      ]
+      "endDate": "YYYY-MM or Present",
+      "bullets": ["string (action verb + tech + metric, max ${atsRules.maxBulletWords} words)"]
     }
   ],
   "projects": [
     {
       "name": "string",
       "description": "string (max 30 words)",
-      "technologies": ["string", "string", ...],
-      "link": "string (URL or empty)",
+      "technologies": ["string"],
+      "link": "string",
       "bullets": ["string (max ${atsRules.maxBulletWords} words)"]
     }
   ],
   "skills": [
-    {
-      "name": "string (category name)",
-      "skills": ["string", "string", ...] (aim for 3-6)
-    }
+    { "name": "string", "skills": ["string"] }
   ]
 }
 
 ═══════════════════════════════════════════════════════════════
 ${userData.existingExperience && userData.existingExperience.length > 0 ? `
-📝 EXISTING EXPERIENCE (Use as base, enhance with keywords)
-═══════════════════════════════════════════════════════════════
-
+📝 EXISTING EXPERIENCE (enhance with keywords, do not alter facts)
 ${JSON.stringify(userData.existingExperience, null, 2)}
 ` : ''}
 ${userData.existingProjects && userData.existingProjects.length > 0 ? `
-🚀 EXISTING PROJECTS (Use as base, enhance with keywords)
-═══════════════════════════════════════════════════════════════
-
+🚀 EXISTING PROJECTS (enhance bullets with JD keywords)
 ${JSON.stringify(userData.existingProjects, null, 2)}
 ` : ''}
 ${userData.existingSkills && userData.existingSkills.length > 0 ? `
-🛠️ EXISTING SKILLS (Merge with JD keywords)
-═══════════════════════════════════════════════════════════════
-
+🛠️ EXISTING SKILLS (merge with JD keywords)
 ${JSON.stringify(userData.existingSkills, null, 2)}
 ` : ''}
 ${userData.existingEducation && userData.existingEducation.length > 0 ? `
-🎓 EXISTING EDUCATION (Prioritize for freshers)
-═══════════════════════════════════════════════════════════════
-
+🎓 EXISTING EDUCATION
 ${JSON.stringify(userData.existingEducation, null, 2)}
 ` : ''}
 ═══════════════════════════════════════════════════════════════
-✅ QUALITY CHECKLIST(Verify before returning)
+✅ QUALITY CHECKLIST
 ═══════════════════════════════════════════════════════════════
+- All bullets start with action verbs
+- All bullets ≤ ${atsRules.maxBulletWords} words
+- ${atsRules.requireMetrics ? 'Every bullet has a metric' : 'Metrics included where possible'}
+- Summary ≤ 60 words, third person
+- No invented companies, skills, or technologies
+- Keywords naturally integrated (density: ${atsRules.keywordDensity})
+- Valid JSON, parseable by JSON.parse()
 
--[] All bullets start with action verbs
-  - [] All bullets ≤ ${atsRules.maxBulletWords} words
-    - [] ${atsRules.requireMetrics ? 'Every bullet has a metric' : 'Metrics included where possible'}
--[] Summary is ≤ 60 words and third person
-  - [] Skills extracted from job description only
-    - [] No invented technologies or skills
-      - [] Keywords naturally integrated(density: ${atsRules.keywordDensity})
-        - [] Valid JSON format(no syntax errors)
-
-═══════════════════════════════════════════════════════════════
-🎯 OUTPUT INSTRUCTIONS
-═══════════════════════════════════════════════════════════════
-
-Return ONLY valid JSON matching the schema above.
-Do NOT include any explanation, markdown, or additional text.
-The response must be parseable by JSON.parse().
-
-BEGIN JSON OUTPUT: `;
+Return ONLY valid JSON. No markdown, no explanations.
+BEGIN JSON OUTPUT:`;
 }
 
 /**

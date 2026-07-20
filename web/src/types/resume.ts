@@ -6,6 +6,7 @@ export interface ResumeData {
     summary: string;
     experience: Experience[];
     projects: Project[];
+    achievements: Achievement[];
     skills: SkillCategory[];
     education: Education[];
     metadata: {
@@ -56,6 +57,14 @@ export interface Education {
     degree: string;
     location: string;
     graduationDate: string;
+}
+
+export interface Achievement {
+    id: string;
+    title: string;
+    issuer: string;
+    date: string;
+    description: string;
 }
 
 export interface ATSAnalysis {

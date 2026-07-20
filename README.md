@@ -1,4 +1,4 @@
-# 🚀 ATSense: The High-Performance Resume Engineering Engine
+# ATSense: The High-Performance Resume Engineering Engine
 
 ![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi&logoColor=white)
@@ -6,11 +6,11 @@
 ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![AI](https://img.shields.io/badge/AI-Generated-blueviolet?style=for-the-badge)
 
-ATSense is not just a resume builder; it’s a **Career Engineering Platform**. It treats resumes as a structured data problem, ensuring that every bullet point, skill, and summary is mathematically optimized for Applicant Tracking Systems (ATS).
+ATSense is not just a resume builder; it's a **Career Engineering Platform**. It treats resumes as a structured data problem, ensuring that every bullet point, skill, and summary is mathematically optimized for Applicant Tracking Systems (ATS).
 
 ---
 
-## 🧠 Core Intelligence Features
+## Core Intelligence Features
 
 ### 1. **Neural Optimization Engine (V2)**
 Our core logic uses a "Strict No-Hallucination" policy. It doesn't invent fake jobs; it performs **Semantic Weaving** to integrate job-specific keywords into your *actual* history.
@@ -31,7 +31,7 @@ Automatically detects which ATS a company is using (Workday, Greenhouse, Lever, 
 
 ---
 
-## 🛠️ The Tech Stack
+## The Tech Stack
 
 ### **Flagship Web (Frontend)**
 - **Framework**: Next.js 14 (App Router)
@@ -42,32 +42,31 @@ Automatically detects which ATS a company is using (Workday, Greenhouse, Lever, 
 ### **Intelligence Engine (Backend)**
 - **Language**: Python 3.10+ (FastAPI)
 - **NLP**: `KeyBERT` for keyword extraction and `Sentence-Transformers` for vector similarity.
-- **Models**: LLaMA 3.3-70B & GPT-4o-mini (via OpenRouter API).
+- **Models**: Qwen 3.5 Flash, DeepSeek V4 Flash, Amazon Nova Micro (via OpenRouter API).
 
 ---
 
-## 🚀 Installation Guide
+## Installation Guide
 
 ### **1. Prerequisites**
 - Node.js (v18+)
-- Python (v3.9+)
+- Python (v3.9+) (optional - only needed for KeyBERT + Semantic analysis)
 - OpenRouter API Key
 
-### **2. Setup the Python Engine**
+### **2. Setup the Python Engine (Optional)**
 ```bash
 cd api
 python3 -m venv venv
-source venv/bin/activate  
-Windows: venv\Scripts\activate
+source venv/bin/activate
+# Windows: venv\Scripts\activate
 
-pip install -r requirements.txt  # If requirements.txt exists, or manual install:
 pip install fastapi uvicorn keybert sentence-transformers spacy pydantic "urllib3<2"
 python3 -m spacy download en_core_web_sm
 python3 main.py
 ```
 *The engine will run on `http://localhost:8001`.*
 
-### **3. Setup the Web Flagship**
+### **3. Setup the Web Application**
 ```bash
 cd web
 npm install
@@ -75,18 +74,18 @@ npm install
 
 Create a `.env.local` in the `web` directory:
 ```env
-OPENROUTER_API_KEY=your_key_here
-NEXT_PUBLIC_API_URL=http://localhost:8001
+OPENROUTER_API_KEY=sk-or-v1-your_key_here
+PYTHON_API_URL=http://localhost:8001
 ```
 
 ```bash
 npm run dev
 ```
-*The portal will be available at `http://localhost:3000`.*
+*The application will be available at `http://localhost:3000`.*
 
 ---
 
-## 📖 How to Use (Step-by-Step for New Users)
+## How to Use (Step-by-Step for New Users)
 
 ### **Step 1: Onboarding**
 - **Login/Register**: Create an account or use "Demo Login" (if enabled). We recommend linking your GitHub account during registration for automatic skill extraction.
@@ -99,7 +98,7 @@ npm run dev
 ### **Step 3: Neural Optimization**
 - Click **"Magic Optimization"**.
 - Watch as the AI performs the "High-ATS" weighting, weaving specific phrases into your existing EXPERIENCE and SUMMARY sections.
-- *Note*: It will never invent professional history. It only refines what you’ve provided.
+- *Note*: It will never invent professional history. It only refines what you've provided.
 
 ### **Step 4: Real-Time Refinement**
 - Use the **AI Writer** in the Summary tab to generate a targeted professional bio.
@@ -111,30 +110,33 @@ npm run dev
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```text
-├── api/                # Python NLP Intelligence Service
-│   ├── main.py         # FastAPI Entry point
-│   └── ...             # Semantic models and logic
-├── web/                # Next.js Application
-│   ├── src/
-│   │   ├── app/        # Pages and API Routes
-│   │   ├── components/ # UI Components (Editor, Preview, etc.)
-│   │   ├── store/      # Zustand State (Resume JSON Schema)
-│   │   └── utils/      # ATS Profiles, Prompts, and Logic
-└── README.md
++-- api/                # Python NLP Intelligence Service (Optional)
+|   +-- main.py         # FastAPI Entry point
+|   +-- ...             # Semantic models and logic
++-- web/                # Next.js Application
+|   +-- src/
+|       +-- app/        # Pages and API Routes
+|       +-- components/ # UI Components (Editor, Preview, etc.)
+|       +-- store/      # Zustand State (Resume JSON Schema)
+|       +-- utils/      # ATS Profiles, Prompts, and Logic
+|       +-- config/     # OpenRouter API Configuration
++-- README.md
 ```
 
 ---
 
-## 🚦 Troubleshooting
+## Troubleshooting
 
-1. **"Neural Core Offline"**: Ensure the Python backend is running on port 8001. Check CORS settings in `api/main.py`.
-2. **AI not responding**: Verify your `OPENROUTER_API_KEY` has active credits.
+1. **"Neural Core Offline"**: Ensure the Python backend is running on port 8001 (if using hybrid mode). Check CORS settings in `api/main.py`.
+2. **AI not responding**: Verify your `OPENROUTER_API_KEY` is set correctly in `.env.local` and has active credits.
 3. **Empty PDF**: Ensure `Puppeteer` is installed correctly (`npm install puppeteer`).
+4. **Resume shows fake company names**: The AI has anti-hallucination rules. If it still generates fake data, manually edit the experience section in the editor.
+5. **API errors (500)**: Check that your OpenRouter API key is valid and the selected models are available.
 
 ---
 
-Built with ❤️ by **Solomon K**
+Built by **Solomon K**
 *Engineering the future of career intelligence.*

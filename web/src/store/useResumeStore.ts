@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { ResumeData, ATSAnalysis, RecommendationRequest, Experience, Project } from '@/types/resume';
+import { ResumeData, ATSAnalysis, RecommendationRequest, Experience, Project, Achievement } from '@/types/resume';
 import { determineExperienceLevel } from '@/utils/userProfileAnalyzer';
 import { processGithubLanguages } from '@/utils/skillProcessor';
 
@@ -42,6 +42,11 @@ interface ResumeState {
     removeProject: (id: string) => void;
     removeEducation: (id: string) => void;
 
+    // Achievements
+    addAchievement: () => void;
+    updateAchievement: (id: string, updates: Partial<Achievement>) => void;
+    removeAchievement: (id: string) => void;
+
     // GitHub Integration
     githubLinked: boolean;
     githubUsername: string;
@@ -77,6 +82,7 @@ const DEFAULT_RESUME: ResumeData = {
     summary: 'High-performance Software Engineer specializing in AI-driven career engineering and ATS optimization. Expert in building predictive systems that treat resumes as structured architectural data to bypass legacy hiring bottlenecks.',
     experience: [],
     projects: [],
+    achievements: [],
     skills: [],
     education: [],
     metadata: {}
@@ -222,6 +228,38 @@ export const useResumeStore = create<ResumeState>()(
                 resume: {
                     ...state.resume,
                     education: state.resume.education.filter(edu => edu.id !== id)
+                }
+            })),
+
+            addAchievement: () => set((state) => ({
+                resume: {
+                    ...state.resume,
+                    achievements: [
+                        ...(state.resume.achievements || []),
+                        {
+                            id: Math.random().toString(36).substr(2, 9),
+                            title: '',
+                            issuer: '',
+                            date: '',
+                            description: ''
+                        }
+                    ]
+                }
+            })),
+
+            updateAchievement: (id: string, updates: Partial<Achievement>) => set((state) => ({
+                resume: {
+                    ...state.resume,
+                    achievements: (state.resume.achievements || []).map(ach =>
+                        ach.id === id ? { ...ach, ...updates } : ach
+                    )
+                }
+            })),
+
+            removeAchievement: (id: string) => set((state) => ({
+                resume: {
+                    ...state.resume,
+                    achievements: (state.resume.achievements || []).filter(ach => ach.id !== id)
                 }
             })),
 

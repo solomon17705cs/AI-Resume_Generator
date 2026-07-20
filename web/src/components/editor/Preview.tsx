@@ -17,7 +17,7 @@ export const Preview: React.FC<PreviewProps> = ({ data, scale = 1, jobDescriptio
     const [optimizingId, setOptimizingId] = useState<string | null>(null);
 
     if (!data) return null;
-    const { personalInfo, summary, experience, projects, skills, education } = data;
+    const { personalInfo, summary, experience, projects, achievements, skills, education } = data;
 
     const handleOptimizeSummary = async () => {
         if (!jobDescription || !onUpdate) return;
@@ -205,6 +205,41 @@ export const Preview: React.FC<PreviewProps> = ({ data, scale = 1, jobDescriptio
                         </section>
                     );
 
+                    const hasAchievements = (achievements || []).length > 0 && (achievements || []).some(a => a.title?.trim());
+
+                    const achievementsSection = (hasAchievements || isInteractive) && (
+                        <section key="achievements" className="space-y-3">
+                            <SectionTitle title="Achievements & Awards" />
+                            <div className="space-y-3">
+                                {(achievements || []).length > 0 ? (achievements || []).map((ach, i) => (
+                                    <div key={ach.id || i} className="flex justify-between items-start gap-4">
+                                        <div className="space-y-0.5 flex-1">
+                                            <div className="flex items-baseline gap-2 flex-wrap">
+                                                <span className="font-extrabold text-[10pt] text-slate-900 tracking-tight">
+                                                    {ach.title || '[Achievement Title]'}
+                                                </span>
+                                                {ach.issuer && (
+                                                    <>
+                                                        <span className="text-slate-400 text-[9pt]">·</span>
+                                                        <span className="font-bold text-[9pt] text-blue-700 italic">{ach.issuer}</span>
+                                                    </>
+                                                )}
+                                            </div>
+                                            {ach.description && (
+                                                <p className="text-[9pt] font-medium text-slate-700 leading-relaxed">{ach.description}</p>
+                                            )}
+                                        </div>
+                                        {ach.date && (
+                                            <span className="text-[9pt] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">{ach.date}</span>
+                                        )}
+                                    </div>
+                                )) : (
+                                    <p className="text-[9pt] text-slate-400 italic font-medium">[Add awards, certifications, or recognitions in the editor]</p>
+                                )}
+                            </div>
+                        </section>
+                    );
+
                     const skillsSection = skills && (skills.length > 0 || isInteractive) && (
                         <section key="skills">
                             <SectionTitle title="Technical Matrix" />
@@ -227,19 +262,23 @@ export const Preview: React.FC<PreviewProps> = ({ data, scale = 1, jobDescriptio
                     const sections: React.ReactElement[] = [summarySection];
 
                     if (isEntryLevel) {
-                        // Entry-Level Order: Summary -> Education -> Projects -> Skills
+                        // Entry-Level Order: Summary -> Education -> Projects -> Achievements -> Skills
                         sections.push(educationSection);
                         if ((hasProjects || isInteractive) && projectsSection) sections.push(projectsSection);
+                        if ((hasAchievements || isInteractive) && achievementsSection) sections.push(achievementsSection);
                         if (skillsSection) sections.push(skillsSection);
                     } else if (isFresher) {
-                        // Fresher (Pro but no projects) Order: Summary -> Education -> Experience -> Skills
+                        // Fresher Order: Summary -> Education -> Experience -> Projects -> Achievements -> Skills
                         sections.push(educationSection);
                         sections.push(experienceSection);
+                        if ((hasProjects || isInteractive) && projectsSection) sections.push(projectsSection);
+                        if ((hasAchievements || isInteractive) && achievementsSection) sections.push(achievementsSection);
                         if (skillsSection) sections.push(skillsSection);
                     } else {
-                        // Professional Order: Summary -> Experience -> Projects -> Skills -> Education
+                        // Professional Order: Summary -> Experience -> Projects -> Achievements -> Skills -> Education
                         sections.push(experienceSection);
                         if ((hasProjects || isInteractive) && projectsSection) sections.push(projectsSection);
+                        if ((hasAchievements || isInteractive) && achievementsSection) sections.push(achievementsSection);
                         if (skillsSection) sections.push(skillsSection);
                         sections.push(educationSection);
                     }

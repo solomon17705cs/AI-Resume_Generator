@@ -50,7 +50,8 @@ export default function EditorPage() {
         githubLinked, jobDescription, jobUrl, setJobContext,
         syncLanguagesFromGitHub, syncProjectsFromGitHub, addSkillCategory, updateSkillCategoryName,
         removeSkillCategory, githubRepos, setGitHubRepos,
-        isFresher, consumeAICredit, canUseAI, getRemainingCredits
+        isFresher, consumeAICredit, canUseAI, getRemainingCredits,
+        addAchievement, updateAchievement, removeAchievement
     } = useResumeStore();
 
     const [activeTab, setActiveTab] = useState("personal");
@@ -351,18 +352,24 @@ export default function EditorPage() {
 
     const handleExportPDF = async () => {
         try {
-            const html = document.getElementById('resume-content-to-export')?.outerHTML;
-            if (!html) return;
-            const response = await axios.post('/api/export-pdf', { html }, { responseType: 'blob' });
+            // Send the structured resume data so the server renders
+            // a fully self-contained HTML — no missing Tailwind styles.
+            const response = await axios.post(
+                '/api/export-pdf',
+                { resumeData: resume },
+                { responseType: 'blob' }
+            );
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `${resume.personalInfo.fullName.replace(" ", "_")}_Resume.pdf`);
+            const fileName = `${(resume.personalInfo.fullName || 'Resume').replace(/\s+/g, '_')}_Resume.pdf`;
+            link.setAttribute('download', fileName);
             document.body.appendChild(link);
             link.click();
             link.remove();
+            window.URL.revokeObjectURL(url);
         } catch (error) {
-            alert("Export failed.");
+            alert("Export failed. Please try again.");
         }
     };
 
@@ -703,7 +710,7 @@ export default function EditorPage() {
                 {/* Global Editor Form */}
                 <main className="flex-1 flex flex-col bg-slate-900/20 relative">
                     <div className="flex px-8 h-12 items-center bg-slate-950/50 border-b border-white/5 shrink-0 gap-8 overflow-x-auto no-scrollbar">
-                        {["personal", "summary", "experience", "projects", "skills", "education", "history"].map((tab) => (
+                        {["personal", "summary", "experience", "projects", "achievements", "skills", "education", "history"].map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
@@ -1083,6 +1090,67 @@ Your resume is now optimized for ${atsType || 'generic'} systems!`);
                                                     >
                                                         + Add impact bullet
                                                     </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <NextButton onClick={() => setActiveTab("achievements")} label="Next: Achievements" />
+                                </div>
+                            )}
+
+                            {activeTab === "achievements" && (
+                                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
+                                    <SectionHeader title="Achievements" onAdd={addAchievement} />
+                                    <p className="text-[10px] text-slate-500 font-medium max-w-md leading-relaxed px-2">
+                                        Add awards, certifications, scholarships, competitions, or any notable recognition.
+                                    </p>
+                                    <div className="space-y-10">
+                                        {(resume.achievements || []).length === 0 && (
+                                            <div className="glass-dark border border-dashed border-white/10 rounded-[32px] p-12 flex flex-col items-center justify-center gap-4 text-center">
+                                                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center">
+                                                    <span className="text-2xl">🏆</span>
+                                                </div>
+                                                <p className="text-sm font-bold text-slate-400">No achievements yet</p>
+                                                <p className="text-xs text-slate-600 max-w-xs leading-relaxed">Click "Add New Entry" to add awards, certifications, competitions, or other recognitions.</p>
+                                            </div>
+                                        )}
+                                        {(resume.achievements || []).map((ach) => (
+                                            <div key={ach.id} className="glass-dark border border-white/5 rounded-[32px] p-8 space-y-6 relative group">
+                                                <button
+                                                    onClick={() => removeAchievement(ach.id)}
+                                                    className="absolute top-6 right-6 p-2 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                                                    title="Remove Achievement"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                                <div className="grid grid-cols-2 gap-6">
+                                                    <InputField
+                                                        label="Achievement Title"
+                                                        value={ach.title}
+                                                        onChange={(v: string) => updateAchievement(ach.id, { title: v })}
+                                                        placeholder="e.g. Best Paper Award"
+                                                    />
+                                                    <InputField
+                                                        label="Issuing Organization"
+                                                        value={ach.issuer}
+                                                        onChange={(v: string) => updateAchievement(ach.id, { issuer: v })}
+                                                        placeholder="e.g. IEEE, Google, University"
+                                                    />
+                                                    <InputField
+                                                        label="Date"
+                                                        value={ach.date}
+                                                        onChange={(v: string) => updateAchievement(ach.id, { date: v })}
+                                                        placeholder="e.g. May 2024"
+                                                    />
+                                                </div>
+                                                <div className="space-y-3">
+                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-2">Description (optional)</label>
+                                                    <textarea
+                                                        value={ach.description}
+                                                        onChange={(e) => updateAchievement(ach.id, { description: e.target.value })}
+                                                        placeholder="Brief context or impact of this achievement..."
+                                                        className="w-full h-24 bg-slate-900/50 backdrop-blur-sm border border-white/5 hover:border-white/10 rounded-2xl px-6 py-4 text-sm text-slate-200 focus:outline-none focus:border-blue-500/50 focus:bg-slate-900/80 transition-all font-medium resize-none leading-relaxed"
+                                                    />
                                                 </div>
                                             </div>
                                         ))}
