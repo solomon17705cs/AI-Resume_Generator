@@ -16,7 +16,7 @@ interface MagicFixPanelProps {
     };
 }
 
-const MagicFixPanel: React.FC<MagicFixPanelProps> = ({ currentScore, isFixing, onFix, matchForensics }) => {
+const MagicFixPanel: React.FC<MagicFixPanelProps> = ({ currentScore = 0, isFixing, onFix, matchForensics }) => {
     if (currentScore >= 90) return null;
 
     const steps = [

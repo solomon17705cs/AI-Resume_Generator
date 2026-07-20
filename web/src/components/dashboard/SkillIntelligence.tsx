@@ -94,7 +94,7 @@ export const SkillIntelligence: React.FC = () => {
             <div className="grid grid-cols-1 gap-6">
                 {(skillCategories ? Object.values(skillCategories) : []).map((category, idx) => (
                     <motion.div
-                        key={category.name}
+                        key={`cat-${category.name || idx}`}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: idx * 0.1 }}
@@ -112,7 +112,7 @@ export const SkillIntelligence: React.FC = () => {
 
                         <div className="space-y-3">
                             {category.skills.map((skill, sIdx) => (
-                                <div key={sIdx} className="space-y-1.5">
+                                <div key={`skill-${skill.name || sIdx}`} className="space-y-1.5">
                                     <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider text-slate-500 px-1">
                                         <span>{skill.name}</span>
                                         <span className="text-slate-400">{safePercent(skill.normalizedPercentage)}%</span>

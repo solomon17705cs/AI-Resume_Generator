@@ -8,7 +8,7 @@ interface ATSScoreGaugeProps {
     isFresher?: boolean;
 }
 
-export const ATSScoreGauge: React.FC<ATSScoreGaugeProps> = ({ score, isFresher }) => {
+export const ATSScoreGauge: React.FC<ATSScoreGaugeProps> = ({ score = 0, isFresher }) => {
     const clampedScore = Math.min(score, 100);
     const radius = 70;
     const circumference = 2 * Math.PI * radius;
